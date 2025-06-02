@@ -1,4 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
+import { useState } from "react";
 import {
   Pressable,
   SafeAreaView,
@@ -11,7 +12,7 @@ import {
 import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
-import { useState } from "react";
+import { MaterialIcons } from "@expo/vector-icons";
 
 interface Habit {
   title: string;
@@ -40,6 +41,7 @@ export default function AddScreen() {
     frequency: "daily",
     tags: [],
   });
+  const [error, setError] = useState<string | null>(null);
 
   const onToggleTag = (tag: string) => {
     setHabit((prevHabit) => {
@@ -50,14 +52,38 @@ export default function AddScreen() {
     });
   };
 
+  const onSave = () => {
+    setError(null);
+    if (!habit.title.trim().length || habit.tags.length === 0) {
+      setError("Please enter the habit title and select at least one tag.");
+      return;
+    }
+
+    console.log("Habit saved:", habit);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <ThemedText type="title">Add your habit</ThemedText>
-        <ThemedText type="default" style={styles.description}>
-          This is where you can add a new habit. Use the form below to enter the
-          details of your habit.
-        </ThemedText>
+        <View style={[styles.header]}>
+          <View style={styles.titleContainer}>
+            <ThemedText type="title">Add your habit</ThemedText>
+            <ThemedText type="default" style={styles.description}>
+              This is where you can add a new habit. Use the form below to enter
+              the details of your habit.
+            </ThemedText>
+          </View>
+          <Pressable
+            onPress={onSave}
+            style={[
+              styles.button,
+              { backgroundColor: Colors[colorScheme ?? "light"].tint },
+            ]}
+          >
+            <MaterialIcons name="check" size={24} color="#fff" />
+          </Pressable>
+        </View>
+        {error && <ThemedText style={styles.error}>{error}</ThemedText>}
         <Field
           label="Habit"
           placeholder="e.g., Drink more water"
@@ -119,8 +145,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  titleContainer: {
+    flex: 1,
+  },
   scrollContainer: {
     padding: 16,
+  },
+  error: {
+    color: "red",
+    borderWidth: 1,
+    borderColor: "red",
+    borderRadius: 8,
+    padding: 8,
+    backgroundColor: "#ffe6e6",
+    fontSize: 14,
+    marginBottom: 8,
   },
   description: {
     marginBottom: 16,
@@ -129,17 +173,17 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   picker: {
-    marginVertical: 8,
     backgroundColor: "#fff",
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#ccc",
+    marginBottom: 16,
   },
   tagsContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginVertical: 8,
+    marginTop: 8,
   },
   tag: {
     backgroundColor: "#fff",
@@ -147,5 +191,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     borderColor: "#ccc",
+  },
+  button: {
+    justifyContent: "center",
+    alignItems: "center",
+    width: 60,
+    height: 60,
+    borderRadius: 9999,
   },
 });
