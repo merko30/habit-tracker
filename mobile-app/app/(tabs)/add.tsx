@@ -110,7 +110,7 @@ export default function AddScreen() {
           visibilityTime: 2000,
         });
         setHabit(initialValues);
-        router.navigate("/");
+        router.navigate("/?refresh=true"); // Refresh the home screen
 
         // Optionally navigate back or show success message
       } catch (error) {

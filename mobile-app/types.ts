@@ -7,6 +7,7 @@ export interface Habit {
   tags: string[];
   created_at: string; // ISO date string
   streak_count: number;
+  completed_today?: boolean; // Optional, used for UI indication
 }
 
 export interface HabitCompletion {

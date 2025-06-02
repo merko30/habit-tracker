@@ -16,8 +16,7 @@ db.serialize(() => {
     title TEXT NOT NULL,
     frequency TEXT NOT NULL,
     tags TEXT NOT NULL, -- JSON stringified array
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    streak_count INTEGER DEFAULT 0
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS habit_completions (
@@ -37,7 +36,7 @@ interface Habit {
   frequency: string;
   tags: string; // JSON stringified array
   created_at: string;
-  streak_count: number;
+  completed_today?: boolean; // Optional, used for UI indication
 }
 
 interface HabitCompletion {
@@ -60,32 +59,104 @@ function validateId(idParam: string, res: Response): number | null {
 // CRUD for habits
 
 const getHabits: RequestHandler = (_req, res): void => {
-  db.all<Habit>("SELECT * FROM habits", [], (err, rows) => {
+  db.all<Habit>(`SELECT * FROM habits`, [], (err, habits) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
-    // Parse tags for each habit
-    const parsed = rows.map((row) => ({ ...row, tags: JSON.parse(row.tags) }));
-    res.json(parsed);
+    // For each habit, calculate streak and completed_today
+    const getStreakAndToday = (
+      habitId: number,
+      cb: (streak: number, completedToday: boolean) => void
+    ) => {
+      db.all<{ date: string }>(
+        `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
+        [habitId],
+        (err, rows) => {
+          if (err) return cb(0, false);
+          let streak = 0;
+          let current: Date | null = null;
+          let completedToday = false;
+          const todayStr = new Date().toISOString().slice(0, 10);
+          for (const row of rows) {
+            const rowDate = new Date(row.date);
+            if (row.date === todayStr) completedToday = true;
+            if (streak === 0) current = rowDate;
+            if (
+              current &&
+              rowDate.toISOString().slice(0, 10) ===
+                current.toISOString().slice(0, 10)
+            ) {
+              streak++;
+              current.setDate(current.getDate() - 1);
+            } else {
+              break;
+            }
+          }
+          cb(streak, completedToday);
+        }
+      );
+    };
+    let count = habits.length;
+    if (count === 0) return res.json([]);
+    const result: any[] = [];
+    habits.forEach((habit) => {
+      getStreakAndToday(habit.id, (streak, completedToday) => {
+        result.push({
+          ...habit,
+          tags: JSON.parse(habit.tags || "[]"),
+          streak_count: streak,
+          completed_today: completedToday,
+        });
+        count--;
+        if (count === 0) {
+          res.json(result);
+        }
+      });
+    });
   });
 };
 
 const getHabitById: RequestHandler<{ id: string }> = (req, res): void => {
   const id = validateId(req.params.id, res);
   if (id === null) return;
-
-  db.get<Habit>("SELECT * FROM habits WHERE id = ?", [id], (err, row) => {
+  db.get<Habit>("SELECT * FROM habits WHERE id = ?", [id], (err, habit) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
-    if (!row) {
+    if (!habit) {
       res.status(404).json({ error: "Habit not found" });
       return;
     }
-    row.tags = JSON.parse(row.tags);
-    res.json(row);
+    // Calculate streak for this habit
+    db.all<{ date: string }>(
+      `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
+      [habit.id],
+      (err, rows) => {
+        let streak = 0;
+        let current: Date | null = null;
+        for (const row of rows) {
+          const rowDate = new Date(row.date);
+          if (streak === 0) current = rowDate;
+          if (
+            current &&
+            rowDate.toISOString().slice(0, 10) ===
+              current.toISOString().slice(0, 10)
+          ) {
+            streak++;
+            current.setDate(current.getDate() - 1);
+          } else {
+            break;
+          }
+        }
+        res.json({
+          ...habit,
+          tags: JSON.parse(habit.tags || "[]"),
+          streak_count: streak,
+        });
+      }
+    );
   });
 };
 
@@ -104,6 +175,7 @@ const createHabit: RequestHandler = (req, res): void => {
     [title, frequency, JSON.stringify(tags)],
     function (this: sqlite3.RunResult, err) {
       if (err) {
+        console.log(err);
         res.status(500).json({ error: err.message });
         return;
       }
@@ -127,26 +199,20 @@ const updateHabit: RequestHandler<{ id: string }> = (req, res): void => {
   const id = validateId(req.params.id, res);
   if (id === null) return;
 
-  const { title, frequency, streak_count, tags } = req.body as {
+  const { title, frequency, tags } = req.body as {
     title?: string;
     frequency?: string;
-    streak_count?: number;
     tags?: string[];
   };
 
-  if (
-    title === undefined ||
-    frequency === undefined ||
-    streak_count === undefined ||
-    tags === undefined
-  ) {
+  if (title === undefined || frequency === undefined || tags === undefined) {
     res.status(400).json({ error: "Missing fields" });
     return;
   }
 
   db.run(
-    "UPDATE habits SET title = ?, frequency = ?, streak_count = ?, tags = ? WHERE id = ?",
-    [title, frequency, streak_count, JSON.stringify(tags), id],
+    "UPDATE habits SET title = ?, frequency = ?, tags = ? WHERE id = ?",
+    [title, frequency, JSON.stringify(tags), id],
     function (this: sqlite3.RunResult, err) {
       if (err) {
         res.status(500).json({ error: err.message });
@@ -215,8 +281,7 @@ const getCompletionById: RequestHandler<{ id: string }> = (req, res): void => {
     }
   );
 };
-
-const createCompletion: RequestHandler = (req, res): void => {
+const createOrUpdateCompletion: RequestHandler = (req, res): void => {
   const { habit_id, date, completed } = req.body as {
     habit_id?: number;
     date?: string;
@@ -228,51 +293,52 @@ const createCompletion: RequestHandler = (req, res): void => {
     return;
   }
 
-  db.run(
-    "INSERT INTO habit_completions (habit_id, date, completed) VALUES (?, ?, ?)",
-    [habit_id, date, completed ? 1 : 0],
-    function (this: sqlite3.RunResult, err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
-      }
-      db.get<HabitCompletion>(
-        "SELECT * FROM habit_completions WHERE id = ?",
-        [this.lastID],
-        (err, row) => {
-          if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-          }
-          res.status(201).json({ ...row, completed: Boolean(row.completed) });
+  db.serialize(() => {
+    // Check if there was already a completion for today
+    db.get<{ completed: number }>(
+      `SELECT completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
+      [habit_id, date],
+      (err, existing) => {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
         }
-      );
-    }
-  );
-};
 
-const updateCompletion: RequestHandler<{ id: string }> = (req, res): void => {
-  const id = validateId(req.params.id, res);
-  if (id === null) return;
+        const alreadyCompleted = existing?.completed === 1;
 
-  const { completed } = req.body as { completed?: boolean };
+        db.run(
+          `
+          INSERT INTO habit_completions (habit_id, date, completed)
+          VALUES (?, ?, ?)
+          ON CONFLICT(habit_id, date) DO UPDATE SET completed = excluded.completed
+          `,
+          [habit_id, date, completed ? 1 : 0],
+          function (this: sqlite3.RunResult, err) {
+            if (err) {
+              res.status(500).json({ error: err.message });
+              return;
+            }
 
-  if (typeof completed !== "boolean") {
-    res.status(400).json({ error: "Missing or invalid 'completed' field" });
-    return;
-  }
+            db.get<HabitCompletion>(
+              `SELECT * FROM habit_completions WHERE habit_id = ? AND date = ?`,
+              [habit_id, date],
+              (err, row) => {
+                if (err) {
+                  res.status(500).json({ error: err.message });
+                  return;
+                }
 
-  db.run(
-    "UPDATE habit_completions SET completed = ? WHERE id = ?",
-    [completed ? 1 : 0, id],
-    function (this: sqlite3.RunResult, err) {
-      if (err) {
-        res.status(500).json({ error: err.message });
-        return;
+                res.status(200).json({
+                  ...row,
+                  completed: Boolean(row.completed),
+                });
+              }
+            );
+          }
+        );
       }
-      res.json({ updated: this.changes });
-    }
-  );
+    );
+  });
 };
 
 const deleteCompletion: RequestHandler<{ id: string }> = (req, res): void => {
@@ -302,8 +368,7 @@ app.delete("/habits/:id", deleteHabit);
 
 app.get("/completions", getCompletions);
 app.get("/completions/:id", getCompletionById);
-app.post("/completions", createCompletion);
-app.put("/completions/:id", updateCompletion);
+app.post("/completions", createOrUpdateCompletion);
 app.delete("/completions/:id", deleteCompletion);
 
 app.listen(PORT, () => {

@@ -4,16 +4,16 @@ import {
   SafeAreaView,
   ScrollView,
   StyleSheet,
-  useColorScheme,
   View,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
+import { useLocalSearchParams } from "expo-router";
 
 import { ThemedText } from "@/components/ThemedText";
 import { getHabits } from "@/api/habits";
 import { Habit } from "@/types";
-import { Colors } from "@/constants/Colors";
+import HabitItem from "@/components/HabitItem";
 
 const HABITS_STORAGE_KEY = "habits";
 
@@ -21,7 +21,8 @@ export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const colorScheme = useColorScheme();
+
+  const { refresh } = useLocalSearchParams();
 
   const loadHabitsFromStorage = async () => {
     try {
@@ -65,13 +66,13 @@ export default function HomeScreen() {
     };
 
     checkConnectionAndLoad();
-  }, []);
+  }, [refresh]);
 
   console.log("Loaded habits:", habits);
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView>
+      <View>
         <View style={styles.headerContent}>
           <ThemedText type="title">Hello, John Doe!</ThemedText>
           <ThemedText type="subtitle" style={styles.subtitle}>
@@ -81,21 +82,7 @@ export default function HomeScreen() {
         <FlatList
           data={habits}
           keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <View style={styles.item}>
-              <ThemedText style={styles.itemTitle}>{item.title}</ThemedText>
-              <View
-                style={[
-                  styles.count,
-                  { backgroundColor: Colors[colorScheme ?? "light"].tint },
-                ]}
-              >
-                <ThemedText style={styles.streakCount}>
-                  {item.streak_count}
-                </ThemedText>
-              </View>
-            </View>
-          )}
+          renderItem={({ item }) => <HabitItem habit={item} />}
           ListEmptyComponent={
             loading ? (
               <ThemedText>Loading habits...</ThemedText>
@@ -104,7 +91,7 @@ export default function HomeScreen() {
             )
           }
         />
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -119,26 +106,5 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: 16,
-  },
-  item: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    backgroundColor: "white",
-    marginBottom: 4,
-  },
-  itemTitle: {
-    fontWeight: "500",
-  },
-  count: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  streakCount: {
-    color: "white",
   },
 });
