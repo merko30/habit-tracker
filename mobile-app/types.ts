@@ -4,6 +4,7 @@ export interface Habit {
   id: number;
   title: string;
   frequency: string;
+  tags: string[];
   created_at: string; // ISO date string
   streak_count: number;
 }
@@ -18,12 +19,14 @@ export interface HabitCompletion {
 export interface CreateHabit {
   title: string;
   frequency: string;
+  tags: string[];
 }
 
 export interface UpdateHabit {
   title: string;
   frequency: string;
   streak_count: number;
+  tags: string[];
 }
 
 export interface CreateCompletion {

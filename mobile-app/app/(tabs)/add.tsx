@@ -13,12 +13,7 @@ import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
 import { MaterialIcons } from "@expo/vector-icons";
-
-interface Habit {
-  title: string;
-  frequency: string;
-  tags: string[];
-}
+import { Habit } from "@/types";
 
 const TAGS = [
   "Health",
@@ -36,7 +31,9 @@ const FREQUENCIES = ["daily", "weekly", "monthly", "yearly", "custom"];
 
 export default function AddScreen() {
   const colorScheme = useColorScheme();
-  const [habit, setHabit] = useState<Habit>({
+  const [habit, setHabit] = useState<
+    Omit<Habit, "created_at" | "streak_count" | "id">
+  >({
     title: "",
     frequency: "daily",
     tags: [],

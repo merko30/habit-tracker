@@ -15,6 +15,7 @@ db.serialize(() => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,
     frequency TEXT NOT NULL,
+    tags TEXT NOT NULL, -- JSON stringified array
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     streak_count INTEGER DEFAULT 0
   )`);
@@ -34,6 +35,7 @@ interface Habit {
   id: number;
   title: string;
   frequency: string;
+  tags: string; // JSON stringified array
   created_at: string;
   streak_count: number;
 }
@@ -58,12 +60,14 @@ function validateId(idParam: string, res: Response): number | null {
 // CRUD for habits
 
 const getHabits: RequestHandler = (_req, res): void => {
-  db.all<Habit[]>("SELECT * FROM habits", [], (err, rows) => {
+  db.all<Habit>("SELECT * FROM habits", [], (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
     }
-    res.json(rows);
+    // Parse tags for each habit
+    const parsed = rows.map((row) => ({ ...row, tags: JSON.parse(row.tags) }));
+    res.json(parsed);
   });
 };
 
@@ -80,22 +84,24 @@ const getHabitById: RequestHandler<{ id: string }> = (req, res): void => {
       res.status(404).json({ error: "Habit not found" });
       return;
     }
+    row.tags = JSON.parse(row.tags);
     res.json(row);
   });
 };
 
 const createHabit: RequestHandler = (req, res): void => {
-  const { title, frequency } = req.body as {
+  const { title, frequency, tags } = req.body as {
     title?: string;
     frequency?: string;
+    tags?: string[];
   };
-  if (!title || !frequency) {
+  if (!title || !frequency || !Array.isArray(tags)) {
     res.status(400).json({ error: "Missing fields" });
     return;
   }
   db.run(
-    "INSERT INTO habits (title, frequency) VALUES (?, ?)",
-    [title, frequency],
+    "INSERT INTO habits (title, frequency, tags) VALUES (?, ?, ?)",
+    [title, frequency, JSON.stringify(tags)],
     function (this: sqlite3.RunResult, err) {
       if (err) {
         res.status(500).json({ error: err.message });
@@ -109,6 +115,7 @@ const createHabit: RequestHandler = (req, res): void => {
             res.status(500).json({ error: err.message });
             return;
           }
+          if (row) row.tags = JSON.parse(row.tags);
           res.status(201).json(row);
         }
       );
@@ -120,24 +127,26 @@ const updateHabit: RequestHandler<{ id: string }> = (req, res): void => {
   const id = validateId(req.params.id, res);
   if (id === null) return;
 
-  const { title, frequency, streak_count } = req.body as {
+  const { title, frequency, streak_count, tags } = req.body as {
     title?: string;
     frequency?: string;
     streak_count?: number;
+    tags?: string[];
   };
 
   if (
     title === undefined ||
     frequency === undefined ||
-    streak_count === undefined
+    streak_count === undefined ||
+    tags === undefined
   ) {
     res.status(400).json({ error: "Missing fields" });
     return;
   }
 
   db.run(
-    "UPDATE habits SET title = ?, frequency = ?, streak_count = ? WHERE id = ?",
-    [title, frequency, streak_count, id],
+    "UPDATE habits SET title = ?, frequency = ?, streak_count = ?, tags = ? WHERE id = ?",
+    [title, frequency, streak_count, JSON.stringify(tags), id],
     function (this: sqlite3.RunResult, err) {
       if (err) {
         res.status(500).json({ error: err.message });
