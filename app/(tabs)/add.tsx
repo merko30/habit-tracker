@@ -2,11 +2,11 @@ import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
 
 import { ThemedText } from "@/components/ThemedText";
 
-export default function HomeScreen() {
+export default function AddScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <ThemedText type="title">Hello, John Doe!</ThemedText>
+        <ThemedText type="title">Add your habit</ThemedText>
       </ScrollView>
     </SafeAreaView>
   );
