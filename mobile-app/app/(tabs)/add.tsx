@@ -8,12 +8,17 @@ import {
   useColorScheme,
   View,
 } from "react-native";
+import NetInfo from "@react-native-community/netinfo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
 import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import { Colors } from "@/constants/Colors";
+import { createHabit } from "@/api/habits";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Habit } from "@/types";
+import Toast from "react-native-toast-message";
 
 const TAGS = [
   "Health",
@@ -29,16 +34,19 @@ const TAGS = [
 
 const FREQUENCIES = ["daily", "weekly", "monthly", "yearly", "custom"];
 
+const initialValues: Omit<Habit, "created_at" | "streak_count" | "id"> = {
+  title: "",
+  frequency: "daily",
+  tags: [],
+};
+
 export default function AddScreen() {
   const colorScheme = useColorScheme();
-  const [habit, setHabit] = useState<
-    Omit<Habit, "created_at" | "streak_count" | "id">
-  >({
-    title: "",
-    frequency: "daily",
-    tags: [],
-  });
+  const [habit, setHabit] =
+    useState<Omit<Habit, "created_at" | "streak_count" | "id">>(initialValues);
   const [error, setError] = useState<string | null>(null);
+
+  const router = useRouter();
 
   const onToggleTag = (tag: string) => {
     setHabit((prevHabit) => {
@@ -49,14 +57,76 @@ export default function AddScreen() {
     });
   };
 
-  const onSave = () => {
+  const saveToAsyncStorage = async (
+    habit: Omit<Habit, "created_at" | "streak_count" | "id">
+  ) => {
+    try {
+      const existingHabits = await AsyncStorage.getItem("habits");
+      const habits = existingHabits ? JSON.parse(existingHabits) : [];
+      const newHabit = {
+        ...habit,
+        created_at: new Date().toISOString(),
+        streak_count: 0,
+        id: habits.length + 1, // Simple ID generation
+      };
+      habits.push(newHabit);
+      await AsyncStorage.setItem("habits", JSON.stringify(habits));
+      return newHabit;
+    } catch (error) {
+      console.log("Failed to save habit to AsyncStorage:", error);
+      throw new Error("Failed to save habit");
+    }
+  };
+
+  const saveToApi = async (
+    habit: Omit<Habit, "created_at" | "streak_count" | "id">
+  ) => {
+    try {
+      const data = await createHabit(habit);
+      console.log("Habit created successfully:", data);
+      return data;
+    } catch (error) {
+      console.log("Failed to create habit via API:", error);
+      throw new Error("Failed to create habit");
+    }
+  };
+
+  const onSave = async () => {
     setError(null);
     if (!habit.title.trim().length || habit.tags.length === 0) {
       setError("Please enter the habit title and select at least one tag.");
       return;
     }
 
-    console.log("Habit saved:", habit);
+    const netState = await NetInfo.fetch();
+    if (netState.isConnected) {
+      try {
+        const newHabit = await saveToApi(habit);
+        console.log("Habit saved successfully:", newHabit);
+        Toast.show({
+          type: "success",
+          text1: "Habit saved successfully!",
+          position: "bottom",
+          visibilityTime: 2000,
+        });
+        setHabit(initialValues);
+        router.navigate("/");
+
+        // Optionally navigate back or show success message
+      } catch (error) {
+        setError(
+          "Failed to save habit via API. Saving to local storage instead."
+        );
+      }
+    } else {
+      try {
+        const newHabit = await saveToAsyncStorage(habit);
+        console.log("Habit saved to AsyncStorage:", newHabit);
+        // Optionally navigate back or show success message
+      } catch (error) {
+        setError("Failed to save habit to local storage.");
+      }
+    }
   };
 
   return (

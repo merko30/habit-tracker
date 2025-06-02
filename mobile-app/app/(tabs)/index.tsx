@@ -1,6 +1,12 @@
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
+import {
+  FlatList,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 
@@ -65,6 +71,25 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <ThemedText type="title">Hello, John Doe!</ThemedText>
+        <ThemedText type="subtitle" style={styles.subtitle}>
+          Your Habits
+        </ThemedText>
+        <FlatList
+          data={habits}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.item}>
+              <ThemedText>{item.title}</ThemedText>
+            </View>
+          )}
+          ListEmptyComponent={
+            loading ? (
+              <ThemedText>Loading habits...</ThemedText>
+            ) : (
+              <ThemedText>No habits found</ThemedText>
+            )
+          }
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -76,5 +101,13 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
+  },
+  subtitle: {
+    marginBottom: 16,
+  },
+  item: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
   },
 });
