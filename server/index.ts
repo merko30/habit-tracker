@@ -2,7 +2,7 @@ import express, { Response, RequestHandler } from "express";
 import sqlite3 from "sqlite3";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { sign } from "jsonwebtoken";
+import { sign, verify } from "jsonwebtoken";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -187,8 +187,23 @@ const getHabitById: RequestHandler<{ id: string }> = (req, res): void => {
 };
 
 const createHabit: RequestHandler = (req, res): void => {
-  const { user_id, title, frequency, tags } = req.body as {
-    user_id?: number;
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const decoded = verify(token, process.env.JWT_SECRET || "supersecretkey");
+  if (!decoded || typeof decoded !== "object" || !("id" in decoded)) {
+    res.status(401).json({ error: "Invalid token" });
+    return;
+  }
+  const user_id = decoded.id as number;
+  if (!user_id) {
+    res.status(400).json({ error: "User ID is required" });
+    return;
+  }
+  const { title, frequency, tags } = req.body as {
     title?: string;
     frequency?: string;
     tags?: string[];
@@ -225,6 +240,15 @@ const updateHabit: RequestHandler<{ id: string }> = (req, res): void => {
   const id = validateId(req.params.id, res);
   if (id === null) return;
 
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const decoded = verify(token, process.env.JWT_SECRET || "supersecretkey");
+
+  const userId = decoded && typeof decoded === "object" && "id" in decoded;
+
   const { title, frequency, tags } = req.body as {
     title?: string;
     frequency?: string;
@@ -236,15 +260,36 @@ const updateHabit: RequestHandler<{ id: string }> = (req, res): void => {
     return;
   }
 
-  db.run(
-    "UPDATE habits SET title = ?, frequency = ?, tags = ? WHERE id = ?",
-    [title, frequency, JSON.stringify(tags), id],
-    function (this: sqlite3.RunResult, err) {
+  if (!userId) {
+    res.status(400).json({ error: "User ID is required" });
+    return;
+  }
+
+  // Check if the habit belongs to the user
+  db.get<Habit>(
+    "SELECT * FROM habits WHERE id = ? AND user_id = ?",
+    [id, userId],
+    (err, habit) => {
       if (err) {
         res.status(500).json({ error: err.message });
         return;
       }
-      res.json({ updated: this.changes });
+      if (!habit) {
+        res.status(404).json({ error: "Habit not found or unauthorized" });
+        return;
+      }
+
+      db.run(
+        "UPDATE habits SET title = ?, frequency = ?, tags = ? WHERE id = ?",
+        [title, frequency, JSON.stringify(tags), id],
+        function (this: sqlite3.RunResult, err) {
+          if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+          }
+          res.json({ updated: this.changes });
+        }
+      );
     }
   );
 };
@@ -253,15 +298,49 @@ const deleteHabit: RequestHandler<{ id: string }> = (req, res): void => {
   const id = validateId(req.params.id, res);
   if (id === null) return;
 
-  db.run(
-    "DELETE FROM habits WHERE id = ?",
-    [id],
-    function (this: sqlite3.RunResult, err) {
+  const token = req.headers.authorization?.split(" ")[1];
+  if (!token) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const decoded = verify(token, process.env.JWT_SECRET || "supersecretkey");
+  const userId =
+    decoded && typeof decoded === "object" && "id" in decoded && decoded.id;
+
+  if (!userId) {
+    res.status(400).json({ error: "User ID is required" });
+    return;
+  }
+  // Check if the habit belongs to the user
+  db.get<Habit>(
+    "SELECT * FROM habits WHERE id = ? AND user_id = ?",
+    [id, userId],
+    (err, habit) => {
       if (err) {
+        console.log(err);
+
         res.status(500).json({ error: err.message });
         return;
       }
-      res.json({ deleted: this.changes });
+      console.log(err, habit);
+      if (!habit) {
+        res.status(404).json({ error: "Habit not found or unauthorized" });
+        return;
+      }
+
+      db.run(
+        "DELETE FROM habits WHERE id = ?",
+        [id],
+        function (this: sqlite3.RunResult, err) {
+          if (err) {
+            console.log(err);
+
+            res.status(500).json({ error: err.message });
+            return;
+          }
+          res.json({ deleted: this.changes });
+        }
+      );
     }
   );
 };
@@ -307,6 +386,7 @@ const getCompletionById: RequestHandler<{ id: string }> = (req, res): void => {
     }
   );
 };
+
 const createOrUpdateCompletion: RequestHandler = (req, res): void => {
   const { habit_id, date, completed } = req.body as {
     habit_id?: number;
@@ -376,6 +456,7 @@ const deleteCompletion: RequestHandler<{ id: string }> = (req, res): void => {
     [id],
     function (this: sqlite3.RunResult, err) {
       if (err) {
+        console.log(err);
         res.status(500).json({ error: err.message });
         return;
       }

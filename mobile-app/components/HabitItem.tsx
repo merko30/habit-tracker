@@ -50,8 +50,8 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
       await deleteHabit(habit.id);
       shouldRemove.value = 1;
       position.value = withTiming(-wWidth, { duration: 300 });
-    } catch (error) {
-      console.log("Error deleting habit:", error);
+    } catch (error: any) {
+      console.log("Error deleting habit:", error.message);
       Toast.show({
         type: "error",
         text1: "Error",
