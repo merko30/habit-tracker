@@ -18,12 +18,59 @@ export default function createHabitsRouter(db: sqlite3.Database) {
 
   // GET /habits
   router.get("/", (req, res) => {
-    db.all(`SELECT * FROM habits`, [], (err, habits) => {
-      if (err) return res.status(500).json({ error: err.message });
-      // ...existing code for streak and completed_today...
-      // For brevity, you can move the streak logic here from the main file
-      res.json(habits);
-    });
+    db.all(
+      `SELECT h.*, 
+        (
+          SELECT COUNT(*) FROM habit_completions hc WHERE hc.habit_id = h.id AND hc.completed = 1
+        ) AS total_completions,
+        EXISTS (
+          SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
+        ) AS completed_today
+      FROM habits h`,
+      [],
+      (err, habits) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!habits.length) return res.json([]);
+        // For each habit, calculate streak in JS
+        let count = habits.length;
+        const result: any[] = [];
+        habits.forEach((habit: any) => {
+          db.all<{ date: string }>(
+            `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
+            [habit.id],
+            (err, rows) => {
+              let streak = 0;
+              let current: Date | null = null;
+              for (const row of rows) {
+                const rowDate = new Date(row.date);
+                if (streak === 0) current = rowDate;
+                if (
+                  current &&
+                  rowDate.toISOString().slice(0, 10) ===
+                    current.toISOString().slice(0, 10)
+                ) {
+                  streak++;
+                  current.setDate(current.getDate() - 1);
+                } else {
+                  break;
+                }
+              }
+              result.push({
+                ...habit,
+                tags: JSON.parse(habit.tags || "[]"),
+                streak_count: streak,
+                completed_today: Boolean(habit.completed_today),
+                total_completions: habit.total_completions,
+              });
+              count--;
+              if (count === 0) {
+                res.json(result);
+              }
+            }
+          );
+        });
+      }
+    );
   });
 
   // GET /habits/:id
