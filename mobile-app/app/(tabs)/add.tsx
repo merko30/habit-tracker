@@ -1,4 +1,3 @@
-import { Picker } from "@react-native-picker/picker";
 import { useState } from "react";
 import {
   Pressable,
@@ -10,15 +9,16 @@ import {
 } from "react-native";
 import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
 
 import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
+import SaveHeader from "@/components/SaveHeader";
 import { Colors } from "@/constants/Colors";
 import { createHabit } from "@/api/habits";
-import { MaterialIcons } from "@expo/vector-icons";
 import { Habit } from "@/types";
-import Toast from "react-native-toast-message";
+import PickerField from "@/components/PickerField";
 
 const TAGS = [
   "Health",
@@ -32,7 +32,11 @@ const TAGS = [
   "Creative",
 ];
 
-const FREQUENCIES = ["daily", "weekly", "monthly", "yearly", "custom"];
+const FREQUENCIES = [
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "monthly", label: "Monthly" },
+];
 
 const initialValues: Omit<Habit, "created_at" | "streak_count" | "id"> = {
   title: "",
@@ -132,24 +136,11 @@ export default function AddScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={[styles.header]}>
-          <View style={styles.titleContainer}>
-            <ThemedText type="title">Add your habit</ThemedText>
-            <ThemedText type="default" style={styles.description}>
-              This is where you can add a new habit. Use the form below to enter
-              the details of your habit.
-            </ThemedText>
-          </View>
-          <Pressable
-            onPress={onSave}
-            style={[
-              styles.button,
-              { backgroundColor: Colors[colorScheme ?? "light"].tint },
-            ]}
-          >
-            <MaterialIcons name="check" size={24} color="#fff" />
-          </Pressable>
-        </View>
+        <SaveHeader
+          title="Add Habit"
+          description="Create a new habit to track your progress and improve your life."
+          onSave={onSave}
+        />
         {error && <ThemedText style={styles.error}>{error}</ThemedText>}
         <Field
           label="Habit"
@@ -157,24 +148,14 @@ export default function AddScreen() {
           value={habit.title}
           onChangeText={(text) => setHabit({ ...habit, title: text })}
         />
-        <View>
-          <ThemedText type="defaultSemiBold">Frequency</ThemedText>
-          <Picker
-            selectedValue={habit.frequency}
-            onValueChange={(itemValue) =>
-              setHabit({ ...habit, frequency: itemValue })
-            }
-            style={styles.picker}
-          >
-            {FREQUENCIES.map((freq) => (
-              <Picker.Item
-                key={freq}
-                label={freq.charAt(0).toUpperCase() + freq.slice(1)}
-                value={freq}
-              />
-            ))}
-          </Picker>
-        </View>
+        <PickerField
+          label="Frequency"
+          options={FREQUENCIES}
+          value={habit.frequency}
+          onChange={(value) => {
+            setHabit({ ...habit, frequency: value });
+          }}
+        />
         <ThemedText type="defaultSemiBold">Tags</ThemedText>
         <View style={styles.tagsContainer}>
           {TAGS.map((tag) => (

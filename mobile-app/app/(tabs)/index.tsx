@@ -8,6 +8,8 @@ import { ThemedText } from "@/components/ThemedText";
 import { getHabits } from "@/api/habits";
 import { Habit } from "@/types";
 import HabitItem from "@/components/HabitItem";
+import { ThemedView } from "@/components/ThemedView";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 const HABITS_STORAGE_KEY = "habits";
 
@@ -81,7 +83,12 @@ export default function HomeScreen() {
             loading ? (
               <ThemedText>Loading habits...</ThemedText>
             ) : (
-              <ThemedText>No habits found</ThemedText>
+              <ThemedView style={styles.placeholder}>
+                <MaterialIcons name="search" size={48} color="lightgray" />
+                <ThemedText type="subtitle" style={styles.placeholderText}>
+                  No habits found
+                </ThemedText>
+              </ThemedView>
             )
           }
         />
@@ -100,5 +107,18 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     marginBottom: 16,
+  },
+  placeholder: {
+    flex: 1,
+    paddingTop: "50%",
+    backgroundColor: "transparent",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  placeholderText: {
+    marginTop: 8,
+    color: "lightgray",
+    fontSize: 32,
+    fontWeight: "700",
   },
 });
