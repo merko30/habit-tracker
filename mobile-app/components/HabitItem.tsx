@@ -1,6 +1,21 @@
 import { useState } from "react";
-import { useColorScheme, StyleSheet } from "react-native";
+import {
+  useColorScheme,
+  StyleSheet,
+  Dimensions,
+  Pressable,
+} from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+import Toast from "react-native-toast-message";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { snapPoint } from "react-native-redash";
 
 import { Colors } from "@/constants/Colors";
 import { Habit } from "@/types";
@@ -8,11 +23,81 @@ import { createCompletion } from "@/api/completions";
 
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
-import Toast from "react-native-toast-message";
+import { deleteHabit } from "@/api/habits";
+
+const { width: wWidth } = Dimensions.get("window");
+
+const ICONS_WIDTH = 60;
+const SNAP_POINTS = [-wWidth, -ICONS_WIDTH, 0];
+
+const getPosition = (value: number) => {
+  "worklet";
+  return withTiming(value, { duration: 300 });
+};
+
+const INITIAL_POSITION = 0;
+const HEIGHT = 70;
 
 const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   const [habit, setHabit] = useState<Habit>(_habit);
   const colorScheme = useColorScheme();
+
+  const shouldRemove = useSharedValue<0 | 1>(0);
+  const position = useSharedValue(INITIAL_POSITION);
+
+  const onDeleteHabit = async () => {
+    try {
+      await deleteHabit(habit.id);
+      shouldRemove.value = 1;
+      position.value = withTiming(-wWidth, { duration: 300 });
+    } catch (error) {
+      console.log("Error deleting habit:", error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "Failed to delete habit. Please try again.",
+      });
+    }
+  };
+
+  const onDelete = () => {
+    "worklet";
+    runOnJS(onDeleteHabit)();
+  };
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      // goes to the left
+      if (e.translationX < 0) {
+        position.value = e.translationX;
+      }
+    })
+    .onEnd((e) => {
+      // finds the closest snap point
+      // to the current position
+      const to = snapPoint(position.value, e.velocityX, SNAP_POINTS);
+      console.log("Snap point:", to);
+      // handle swipe delete
+      if (to === -wWidth) {
+        shouldRemove.value = 1;
+        position.value = withTiming(-wWidth, { duration: 300 });
+        onDelete();
+      } else if (to === -ICONS_WIDTH) {
+        position.value = getPosition(-ICONS_WIDTH);
+      } else {
+        position.value = getPosition(INITIAL_POSITION);
+      }
+    });
+
+  const height = useDerivedValue(() =>
+    shouldRemove.value === 1 ? withTiming(0, { duration: 300 }) : HEIGHT
+  );
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: position.value }],
+    height: height.value,
+    zIndex: position.value > -50 ? 20 : -1,
+  }));
 
   const onComplete = async () => {
     // console.log("Toggling completion for habit:", habit.id);
@@ -46,35 +131,64 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   };
 
   return (
-    <ThemedView style={styles.item}>
-      <ThemedView style={styles.titleContainer}>
-        <MaterialIcons
-          size={32}
-          name={
-            habit.completed_today ? "check-circle" : "radio-button-unchecked"
-          }
-          onPress={onComplete}
-          color={
-            Colors[colorScheme ?? "light"][
-              habit.completed_today ? "tint" : "text"
-            ]
-          }
-        />
-        <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
-      </ThemedView>
-      <ThemedView
-        style={[
-          styles.count,
-          { backgroundColor: Colors[colorScheme ?? "light"].tint },
-        ]}
-      >
-        <ThemedText style={styles.streakCount}>{habit.streak_count}</ThemedText>
-      </ThemedView>
-    </ThemedView>
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[styles.wrapper, animatedStyle]}>
+        <ThemedView
+          style={[
+            styles.item,
+            {
+              width: wWidth,
+            },
+          ]}
+        >
+          <ThemedView style={styles.titleContainer}>
+            <MaterialIcons
+              size={32}
+              name={
+                habit.completed_today
+                  ? "check-circle"
+                  : "radio-button-unchecked"
+              }
+              onPress={onComplete}
+              color={
+                Colors[colorScheme ?? "light"][
+                  habit.completed_today ? "tint" : "text"
+                ]
+              }
+            />
+            <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
+          </ThemedView>
+          <ThemedView
+            style={[
+              styles.count,
+              { backgroundColor: Colors[colorScheme ?? "light"].tint },
+            ]}
+          >
+            <ThemedText style={styles.streakCount}>
+              {habit.streak_count}
+            </ThemedText>
+          </ThemedView>
+        </ThemedView>
+        <Pressable
+          style={{
+            backgroundColor: "#f44336",
+            width: ICONS_WIDTH,
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={onDeleteHabit}
+        >
+          <MaterialIcons size={32} name="delete" color="white" />
+        </Pressable>
+      </Animated.View>
+    </GestureDetector>
   );
 };
 
 const styles = StyleSheet.create({
+  wrapper: {
+    flexDirection: "row",
+  },
   item: {
     flexDirection: "row",
     justifyContent: "space-between",
