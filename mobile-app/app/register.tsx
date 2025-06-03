@@ -6,13 +6,14 @@ import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import Button from "@/components/Button";
 
-const LoginScreen = () => {
+const RegisterScreen = () => {
   const [data, setData] = useState({
+    username: "",
     email: "",
     password: "",
   });
 
-  const onLogin = () => {
+  const onRegister = () => {
     // Handle login logic here
     console.log("Logging in with:", data);
   };
@@ -21,11 +22,18 @@ const LoginScreen = () => {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <ThemedText type="title" style={styles.title}>
-          Sign in
+          Sign up
         </ThemedText>
         <ThemedText style={styles.description}>
-          Welcome back! Please enter your details.
+          Create a new account to get started.
         </ThemedText>
+        <Field
+          label="Username"
+          value={data.username}
+          onChangeText={(text) => setData({ ...data, username: text })}
+          placeholder="Enter your username"
+          autoCapitalize="none"
+        />
         <Field
           label="Email"
           value={data.email}
@@ -40,9 +48,9 @@ const LoginScreen = () => {
           placeholder="Enter your password"
           secureTextEntry
         />
-        <Button onPress={onLogin}>Sign in</Button>
-        <Link href="/register" style={styles.registerLink}>
-          Don&apos;t have an account? Sign up
+        <Button onPress={onRegister}>Sign in</Button>
+        <Link href="/login" style={styles.loginLink}>
+          Already have an account? Sign in
         </Link>
       </View>
     </SafeAreaView>
@@ -68,11 +76,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     color: "#666",
   },
-  registerLink: {
+  loginLink: {
     marginTop: 16,
     textAlign: "center",
     fontSize: 16,
   },
 });
 
-export default LoginScreen;
+export default RegisterScreen;
