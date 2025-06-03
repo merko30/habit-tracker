@@ -1,6 +1,7 @@
 import express, { Response, RequestHandler } from "express";
 import sqlite3 from "sqlite3";
 import path from "path";
+import bcrypt from "bcryptjs";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -11,12 +12,25 @@ app.use(express.json());
 const db = new sqlite3.Database(path.join(__dirname, "habits.db"));
 
 db.serialize(() => {
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL,
+    age INTEGER,
+    timezone TEXT,
+    display_name TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
   db.run(`CREATE TABLE IF NOT EXISTS habits (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
     title TEXT NOT NULL,
     frequency TEXT NOT NULL,
     tags TEXT NOT NULL, -- JSON stringified array
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS habit_completions (
@@ -45,6 +59,17 @@ interface HabitCompletion {
   date: string; // ISO date string yyyy-mm-dd
   completed: boolean;
 }
+
+type User = {
+  id: number;
+  username: string;
+  email: string;
+  password: string;
+  age: number;
+  timezone: string;
+  display_name: string;
+  created_at: string;
+};
 
 // Helper: Validate ID param
 function validateId(idParam: string, res: Response): number | null {
@@ -161,21 +186,21 @@ const getHabitById: RequestHandler<{ id: string }> = (req, res): void => {
 };
 
 const createHabit: RequestHandler = (req, res): void => {
-  const { title, frequency, tags } = req.body as {
+  const { user_id, title, frequency, tags } = req.body as {
+    user_id?: number;
     title?: string;
     frequency?: string;
     tags?: string[];
   };
-  if (!title || !frequency || !Array.isArray(tags)) {
+  if (!user_id || !title || !frequency || !Array.isArray(tags)) {
     res.status(400).json({ error: "Missing fields" });
     return;
   }
   db.run(
-    "INSERT INTO habits (title, frequency, tags) VALUES (?, ?, ?)",
-    [title, frequency, JSON.stringify(tags)],
+    "INSERT INTO habits (user_id, title, frequency, tags) VALUES (?, ?, ?, ?)",
+    [user_id, title, frequency, JSON.stringify(tags)],
     function (this: sqlite3.RunResult, err) {
       if (err) {
-        console.log(err);
         res.status(500).json({ error: err.message });
         return;
       }
@@ -358,6 +383,95 @@ const deleteCompletion: RequestHandler<{ id: string }> = (req, res): void => {
   );
 };
 
+// Register (create user)
+const registerUser: RequestHandler = async (req, res): Promise<void> => {
+  const { username, email, password, age, timezone, display_name } =
+    req.body as Partial<User>;
+  if (!username || !email || !password) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+  try {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    db.run(
+      `INSERT INTO users (username, email, password, age, timezone, display_name) VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        username,
+        email,
+        hashedPassword,
+        age ?? null,
+        timezone ?? null,
+        display_name ?? null,
+      ],
+      function (this: sqlite3.RunResult, err) {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
+        }
+        db.get<User>(
+          `SELECT id, username, email, age, timezone, display_name, created_at FROM users WHERE id = ?`,
+          [this.lastID],
+          (err, user) => {
+            if (err) {
+              res.status(500).json({ error: err.message });
+              return;
+            }
+            res.status(201).json(user);
+          }
+        );
+      }
+    );
+  } catch (err) {
+    res.status(500).json({ error: "Failed to hash password" });
+  }
+};
+
+// Login (by email or username)
+const loginUser: RequestHandler = (req, res): void => {
+  const { email, username, password } = req.body as Partial<User>;
+  if ((!email && !username) || !password) {
+    res.status(400).json({ error: "Missing required fields" });
+    return;
+  }
+  const query = email
+    ? `SELECT * FROM users WHERE email = ?`
+    : `SELECT * FROM users WHERE username = ?`;
+  const value = email ? email : username;
+  db.get<User>(query, [value], async (err, user) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+    if (!user) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    const match = await bcrypt.compare(password!, user.password);
+    if (!match) {
+      res.status(401).json({ error: "Invalid credentials" });
+      return;
+    }
+    // Don't return password
+    const { password: _pw, ...userData } = user;
+    res.json(userData);
+  });
+};
+
+// Get user by id
+const getUserById: RequestHandler<{ id: string }> = (req, res) => {
+  const id = validateId(req.params.id, res);
+  if (id === null) return;
+  db.get<User>(
+    `SELECT id, username, email, age, timezone, display_name, created_at FROM users WHERE id = ?`,
+    [id],
+    (err, user) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (!user) return res.status(404).json({ error: "User not found" });
+      res.json(user);
+    }
+  );
+};
+
 // Register routes
 
 app.get("/habits", getHabits);
@@ -370,6 +484,10 @@ app.get("/completions", getCompletions);
 app.get("/completions/:id", getCompletionById);
 app.post("/completions", createOrUpdateCompletion);
 app.delete("/completions/:id", deleteCompletion);
+
+app.post("/register", registerUser);
+app.post("/login", loginUser);
+app.get("/users/:id", getUserById);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
