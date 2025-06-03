@@ -407,9 +407,12 @@ const registerUser: RequestHandler = async (req, res): Promise<void> => {
         display_name ?? null,
       ],
       function (this: sqlite3.RunResult, err) {
-        console.log(err);
-
         if (err) {
+          if (err.message.includes("UNIQUE constraint failed")) {
+            res.status(400).json({ error: "Username or email already exists" });
+            return;
+          }
+
           res.status(500).json({ error: err.message });
           return;
         }

@@ -8,6 +8,7 @@ import Button from "@/components/Button";
 import { loginUser } from "@/api/users";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/Auth";
+import Toast from "react-native-toast-message";
 
 const LoginScreen = () => {
   const [data, setData] = useState({
@@ -30,8 +31,12 @@ const LoginScreen = () => {
       setLoggedIn!(true);
 
       router.push("/");
-    } catch (error) {
-      console.log("Login failed:", error);
+    } catch (error: any) {
+      console.log("Login failed:", error.message);
+      Toast.show({
+        type: "error",
+        text1: error.message || "An error occurred during login.",
+      });
     }
   };
 

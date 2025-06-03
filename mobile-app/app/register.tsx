@@ -6,6 +6,7 @@ import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import Button from "@/components/Button";
 import { registerUser } from "@/api/users";
+import Toast from "react-native-toast-message";
 
 const RegisterScreen = () => {
   const [data, setData] = useState({
@@ -21,8 +22,12 @@ const RegisterScreen = () => {
       await registerUser(data);
 
       router.push("/login");
-    } catch (error) {
-      console.error("Registration failed:", error);
+    } catch (error: any) {
+      console.log("Registration failed:", error.message);
+      Toast.show({
+        type: "error",
+        text1: error.message || "An error occurred during registration.",
+      });
       // Handle registration error (e.g., show a message to the user)
     }
   };
