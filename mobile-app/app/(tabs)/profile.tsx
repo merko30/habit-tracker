@@ -1,4 +1,5 @@
 import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 
 import Field from "@/components/Field";
@@ -12,16 +13,19 @@ export default function Profile() {
     age: 30,
     timeZone: "Etc/GMT",
   });
+
+  const onSave = async () => {
+    // save data to AsyncStorage
+    await AsyncStorage.setItem("user", JSON.stringify(user));
+  };
+
   return (
     <SafeAreaView>
       <ScrollView contentContainerStyle={styles.container}>
         <SaveHeader
           title="Profile"
           description="Edit your profile details"
-          onSave={() => {
-            // Handle save logic here
-            console.log("User saved:", user);
-          }}
+          onSave={onSave}
         />
         <Field
           label="Name"

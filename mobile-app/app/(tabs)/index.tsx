@@ -64,8 +64,6 @@ export default function HomeScreen() {
     checkConnectionAndLoad();
   }, [refresh]);
 
-  console.log("Loaded habits:", habits);
-
   return (
     <SafeAreaView style={styles.container}>
       <View>
