@@ -6,6 +6,8 @@ import Field from "@/components/Field";
 import SaveHeader from "@/components/SaveHeader";
 import { GMT_TIMEZONES } from "@/constants/timezones";
 import PickerField from "@/components/PickerField";
+import Button from "@/components/Button";
+import { useAuth } from "@/providers/Auth";
 
 export default function Profile() {
   const [user, setUser] = useState({
@@ -13,6 +15,8 @@ export default function Profile() {
     age: 30,
     timeZone: "Etc/GMT",
   });
+
+  const { logOut: onLogout } = useAuth();
 
   const onSave = async () => {
     // save data to AsyncStorage
@@ -50,6 +54,7 @@ export default function Profile() {
           value={user.timeZone}
           onChange={(value) => setUser({ ...user, timeZone: value })}
         />
+        <Button onPress={onLogout}>Sign out</Button>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,21 +1,30 @@
 import { useState } from "react";
 import { SafeAreaView, StyleSheet, View } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 import Field from "@/components/Field";
 import { ThemedText } from "@/components/ThemedText";
 import Button from "@/components/Button";
+import { registerUser } from "@/api/users";
 
 const RegisterScreen = () => {
   const [data, setData] = useState({
-    username: "",
-    email: "",
-    password: "",
+    username: "merimhas",
+    email: "merim.hasanbegovic@outlook.com",
+    password: "password123",
   });
 
-  const onRegister = () => {
-    // Handle login logic here
-    console.log("Logging in with:", data);
+  const router = useRouter();
+
+  const onRegister = async () => {
+    try {
+      await registerUser(data);
+
+      router.push("/login");
+    } catch (error) {
+      console.error("Registration failed:", error);
+      // Handle registration error (e.g., show a message to the user)
+    }
   };
 
   return (
@@ -40,6 +49,7 @@ const RegisterScreen = () => {
           onChangeText={(text) => setData({ ...data, email: text })}
           placeholder="Enter your email"
           keyboardType="email-address"
+          autoCapitalize="none"
         />
         <Field
           label="Password"

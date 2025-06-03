@@ -56,8 +56,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         loggedIn,
         loading,
         logOut,
-        setLoggedIn: (value: boolean) =>
-          setLoggedIn(value as SetStateAction<boolean>),
+        setLoggedIn,
       }}
     >
       {children}

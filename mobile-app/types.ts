@@ -10,6 +10,17 @@ export interface Habit {
   completed_today?: boolean; // Optional, used for UI indication
 }
 
+// users
+export interface User {
+  id: number;
+  username: string;
+  email: string;
+  age?: number;
+  timezone?: string;
+  display_name?: string;
+  created_at: string; // ISO date string
+}
+
 export interface HabitCompletion {
   id: number;
   habit_id: number;

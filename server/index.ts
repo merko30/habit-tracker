@@ -2,6 +2,7 @@ import express, { Response, RequestHandler } from "express";
 import sqlite3 from "sqlite3";
 import path from "path";
 import bcrypt from "bcryptjs";
+import { sign } from "jsonwebtoken";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -387,6 +388,8 @@ const deleteCompletion: RequestHandler<{ id: string }> = (req, res): void => {
 const registerUser: RequestHandler = async (req, res): Promise<void> => {
   const { username, email, password, age, timezone, display_name } =
     req.body as Partial<User>;
+  console.log("Registering user:", req.body);
+
   if (!username || !email || !password) {
     res.status(400).json({ error: "Missing required fields" });
     return;
@@ -404,6 +407,8 @@ const registerUser: RequestHandler = async (req, res): Promise<void> => {
         display_name ?? null,
       ],
       function (this: sqlite3.RunResult, err) {
+        console.log(err);
+
         if (err) {
           res.status(500).json({ error: err.message });
           return;
@@ -424,6 +429,17 @@ const registerUser: RequestHandler = async (req, res): Promise<void> => {
   } catch (err) {
     res.status(500).json({ error: "Failed to hash password" });
   }
+};
+
+const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+
+const createToken = async (user: User): Promise<string> => {
+  const payload = {
+    id: user.id,
+  };
+  return sign(payload, JWT_SECRET, {
+    expiresIn: "1d", // Token valid for 1 day
+  });
 };
 
 // Login (by email or username)
@@ -451,9 +467,11 @@ const loginUser: RequestHandler = (req, res): void => {
       res.status(401).json({ error: "Invalid credentials" });
       return;
     }
-    // Don't return password
     const { password: _pw, ...userData } = user;
-    res.json(userData);
+    const token = await createToken(user);
+    console.log({ token });
+
+    res.json({ user: userData, token });
   });
 };
 
