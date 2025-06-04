@@ -17,7 +17,9 @@ export default function createHabitsRouter(db: sqlite3.Database) {
   }
 
   // GET /habits
-  router.get("/", (req, res) => {
+  router.get("/", authMiddleware, (req, res) => {
+    const userId = (req as any).userId;
+
     db.all(
       `SELECT h.*, 
         (
@@ -26,8 +28,8 @@ export default function createHabitsRouter(db: sqlite3.Database) {
         EXISTS (
           SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
         ) AS completed_today
-      FROM habits h`,
-      [],
+      FROM habits h WHERE h.user_id = ?`,
+      [userId],
       (err, habits) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!habits.length) return res.json([]);

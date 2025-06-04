@@ -1,6 +1,12 @@
 import express from "express";
 import sqlite3 from "sqlite3";
 import path from "path";
+import ip from "ip";
+
+const _ip = ip.address(); // Get the local IP address
+
+console.log(`Server will be accessible at http://${_ip}:3001`);
+
 import createHabitsRouter from "./routes/habits";
 import createUsersRouter from "./routes/users";
 import createHabitCompletionsRouter from "./routes/habitCompletions";

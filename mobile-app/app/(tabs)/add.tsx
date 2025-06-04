@@ -38,6 +38,12 @@ const FREQUENCIES = [
   { value: "monthly", label: "Monthly" },
 ];
 
+const normalize = (text: string) =>
+  text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/gi, "");
+
 const initialValues: Omit<Habit, "created_at" | "streak_count" | "id"> = {
   title: "",
   frequency: "daily",
@@ -66,13 +72,22 @@ export default function AddScreen() {
   ) => {
     try {
       const existingHabits = await AsyncStorage.getItem("habits");
+
       const habits = existingHabits ? JSON.parse(existingHabits) : [];
       const newHabit = {
         ...habit,
         created_at: new Date().toISOString(),
         streak_count: 0,
-        id: habits.length + 1, // Simple ID generation
+        completed_today: false,
+        id: `offline-${Date.now()}`, // Temporary ID for offline habits
       };
+      const habitExists = habits.some(
+        (h: Habit) => normalize(h.title) === normalize(newHabit.title)
+      );
+      if (habitExists) {
+        setError("A habit with this title already exists.");
+        return;
+      }
       habits.push(newHabit);
       await AsyncStorage.setItem("habits", JSON.stringify(habits));
       return newHabit;
@@ -115,21 +130,16 @@ export default function AddScreen() {
         });
         setHabit(initialValues);
         router.navigate("/?refresh=true"); // Refresh the home screen
-
-        // Optionally navigate back or show success message
       } catch (error) {
-        setError(
-          "Failed to save habit via API. Saving to local storage instead."
-        );
+        const newHabit = await saveToAsyncStorage(habit);
+        router.navigate("/?refresh=true"); // Refresh the home screen
       }
     } else {
-      try {
-        const newHabit = await saveToAsyncStorage(habit);
-        console.log("Habit saved to AsyncStorage:", newHabit);
-        // Optionally navigate back or show success message
-      } catch (error) {
-        setError("Failed to save habit to local storage.");
-      }
+      const newHabit = await saveToAsyncStorage(habit);
+      router.navigate("/?refresh=true"); // Refresh the home screen
+
+      console.log("Habit saved to AsyncStorage:", newHabit);
+      // Optionally navigate back or show success message
     }
   };
 

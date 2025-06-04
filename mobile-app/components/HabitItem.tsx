@@ -7,6 +7,8 @@ import {
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
+import NetInfo from "@react-native-community/netinfo";
+
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -24,6 +26,8 @@ import { createCompletion } from "@/api/completions";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { deleteHabit } from "@/api/habits";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { HABITS_STORAGE_KEY } from "@/constants";
 
 const { width: wWidth } = Dimensions.get("window");
 
@@ -100,7 +104,31 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   }));
 
   const onComplete = async () => {
-    // console.log("Toggling completion for habit:", habit.id);
+    const netState = await NetInfo.fetch();
+    if (!netState.isConnected) {
+      const habitsFromStorage = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
+      if (habitsFromStorage) {
+        const habits = JSON.parse(habitsFromStorage);
+        const updatedHabits = habits.map((h: Habit) =>
+          h.id === habit.id
+            ? {
+                ...h,
+                completed_today: !h.completed_today,
+                streak_count: h.completed_today
+                  ? h.streak_count - 1
+                  : h.streak_count + 1,
+              }
+            : h
+        );
+        await AsyncStorage.setItem("habits", JSON.stringify(updatedHabits));
+      }
+
+      Toast.show({
+        type: "info",
+        text1: "Offline Mode",
+        text2: "Changes will sync when online.",
+      });
+    }
     try {
       setHabit((old) => ({
         ...old,
@@ -115,6 +143,8 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
         completed: !habit.completed_today,
       });
     } catch (error) {
+      console.log(error);
+
       setHabit((old) => ({
         ...old,
         completed_today: !old.completed_today, // Revert the completion state
