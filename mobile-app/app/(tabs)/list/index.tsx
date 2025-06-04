@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   FlatList,
   Platform,
@@ -85,6 +85,8 @@ export default function HomeScreen() {
   const loadHabitsFromApi = async () => {
     try {
       const habitsFromApi = await getHabits();
+      console.log("Loaded habits from API:", habitsFromApi.length);
+
       setHabits(habitsFromApi);
       // await AsyncStorage.setItem(
       //   HABITS_STORAGE_KEY,
@@ -194,11 +196,14 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const checkConnectionAndLoad = async () => {
-      await loadHabitsFromStorage(); // always show local habits first
+      // await loadHabitsFromStorage(); // always show local habits first
 
       const netState = await NetInfo.fetch();
+
       if (netState.isConnected) {
         loadHabitsFromApi(); // this will overwrite later with synced data
+      } else {
+        loadHabitsFromStorage(); // load from local storage if offline
       }
     };
     checkConnectionAndLoad();
@@ -215,21 +220,30 @@ export default function HomeScreen() {
     return () => unsubscribe();
   }, []);
 
+  const sortedHabits = useMemo(
+    () =>
+      habits.slice().sort((a, b) => a.created_at.localeCompare(b.created_at)),
+    [habits]
+  );
+
   return (
     <SafeAreaView style={styles.container}>
-      <View>
+      <View style={{ flex: 1 }}>
         <View style={styles.headerContent}>
           <ThemedText type="title">
-            Hello, {user.displayName || user.username}
+            Hello, {user?.display_name || user?.username}
           </ThemedText>
           <ThemedText type="subtitle" style={styles.subtitle}>
             Your Habits
           </ThemedText>
         </View>
         <FlatList
-          data={habits.sort((a, b) => a.created_at.localeCompare(b.created_at))}
+          style={{ flex: 1, marginBottom: 100 }}
+          data={sortedHabits}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => <HabitItem habit={item} />}
+          snapToAlignment="start"
+          decelerationRate={"normal"}
           ListEmptyComponent={
             loading ? (
               <ThemedText>Loading habits...</ThemedText>

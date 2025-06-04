@@ -123,6 +123,9 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   };
 
   const panGesture = Gesture.Pan()
+    .failOffsetY(10)
+    .failOffsetX(10)
+    .activeOffsetX([-10, 10])
     .onUpdate((e) => {
       // goes to the left
       if (e.translationX < 0) {

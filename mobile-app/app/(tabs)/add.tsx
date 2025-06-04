@@ -82,11 +82,11 @@ export default function AddScreen() {
         visibilityTime: 2000,
       });
       setHabit(initialValues);
-      router.navigate("/list?refresh=true");
+      router.navigate(`/list?refresh=${Date.now()}`);
     } catch (error) {
       console.log(error);
       await saveToAsyncStorage(habit);
-      router.navigate("/list?refresh=true");
+      router.navigate(`/list?refresh=${Date.now()}`);
     }
   };
 
