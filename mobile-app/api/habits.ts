@@ -19,3 +19,7 @@ export async function updateHabit(id: number, data: Partial<Habit>) {
 export async function deleteHabit(id: number) {
   return await axios.delete(`/habits/${id}`).then((response) => response.data);
 }
+
+export async function getHabit(id: number): Promise<Habit> {
+  return await axios.get(`/habits/${id}`).then((response) => response.data);
+}

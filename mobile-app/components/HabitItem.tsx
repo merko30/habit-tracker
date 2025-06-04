@@ -8,7 +8,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
 import NetInfo from "@react-native-community/netinfo";
-import { useRouter } from "expo-router";
+import { Link } from "expo-router";
 
 import Animated, {
   runOnJS,
@@ -194,8 +194,10 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
                 ]
               }
             />
-            <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
-            <ThemedText>{habit.id}</ThemedText>
+            <Link href={{ pathname: "/list/[id]", params: { id: habit.id } }}>
+              <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
+              <ThemedText>{habit.id}</ThemedText>
+            </Link>
           </ThemedView>
           <ThemedView
             style={[

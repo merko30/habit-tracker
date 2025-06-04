@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Platform,
   SafeAreaView,
@@ -8,61 +8,67 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
-import { useRouter } from "expo-router";
+import { useRouter, useLocalSearchParams } from "expo-router";
 
 import HabitForm from "@/components/HabitForm";
 import SaveHeader from "@/components/SaveHeader";
-import { createHabit } from "@/api/habits";
+import { getHabit, updateHabit } from "@/api/habits";
 import { Habit } from "@/types";
 import { HabitFormValues, initialValues } from "@/utils";
 
-export default function AddScreen() {
+export default function HabitEditScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+
   const [habit, setHabit] = useState<HabitFormValues>(initialValues);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  const saveToAsyncStorage = async (habit: Partial<Habit>) => {
-    try {
-      const existingHabits = await AsyncStorage.getItem("habits");
-
-      const habits = existingHabits ? JSON.parse(existingHabits) : [];
-      const newHabit = {
-        ...habit,
-        streak_count: 0,
-        completed_today: false,
-        ...(!habit.id
-          ? {
-              id: `offline-${Date.now()}`, // Temporary ID for offline habits
-              created_at: new Date().toISOString(),
-            }
-          : {}),
-      };
-      const habitExists = habits.some(
-        (h: Habit) => normalize(h.title) === normalize(newHabit.title!)
-      );
-      if (habitExists) {
-        setError("A habit with this title already exists.");
-        return;
+  useEffect(() => {
+    const fetchHabit = async () => {
+      try {
+        // load from api first
+        const habit = await getHabit(id);
+        if (habit) {
+          setHabit({
+            title: habit.title,
+            frequency: habit.frequency,
+            tags: habit.tags || [],
+          });
+        } else {
+          // locally find
+          const existingRaw = await AsyncStorage.getItem("habits");
+          const localHabits: Habit[] = existingRaw
+            ? JSON.parse(existingRaw)
+            : [];
+          const localHabit = localHabits.find((h) => h.id === id);
+          if (localHabit) {
+            setHabit({
+              title: localHabit.title,
+              frequency: localHabit.frequency,
+              tags: localHabit.tags || [],
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to load habit from storage:", error);
       }
-      habits.push(newHabit);
-      await AsyncStorage.setItem("habits", JSON.stringify(habits));
-      return newHabit;
-    } catch (error) {
-      console.log("Failed to save habit to AsyncStorage:", error);
-      throw new Error("Failed to save habit");
-    }
+    };
+
+    fetchHabit();
+  }, [id]);
+
+  const saveToAsyncStorage = async (habit: Partial<Habit>) => {
+    // update after edit
   };
 
-  const saveToApi = async (
-    habit: Omit<Habit, "created_at" | "streak_count" | "id">
-  ) => {
+  const saveToApi = async (habit: Partial<Habit>) => {
     try {
-      const data = await createHabit(habit);
-      console.log("Habit created successfully:", data);
+      const data = await updateHabit(id, habit);
+      console.log("Habit updated successfully:", data);
       return data;
     } catch (error) {
-      console.log("Failed to create habit via API:", error);
-      throw new Error("Failed to create habit");
+      console.log("Failed to update habit via API:", error);
+      throw new Error("Failed to update habit");
     }
   };
 
@@ -75,21 +81,19 @@ export default function AddScreen() {
     try {
       const newHabit = await saveToApi(habit);
       const existingRaw = await AsyncStorage.getItem("habits");
-      const existing: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
-      const exists = existing.some(
-        (h) => normalize(h.title) === normalize(newHabit.title)
+      const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
+      await AsyncStorage.setItem(
+        "habits",
+        JSON.stringify(
+          localHabits.map((h) => (h.id === newHabit.id ? newHabit : h))
+        )
       );
-      if (!exists) {
-        const updated = [...existing, newHabit];
-        await AsyncStorage.setItem("habits", JSON.stringify(updated));
-      }
       Toast.show({
         type: "success",
         text1: "Habit saved successfully!",
         position: "bottom",
         visibilityTime: 2000,
       });
-      setHabit(initialValues);
       router.navigate("/?refresh=true");
     } catch (error) {
       console.log(error);
@@ -105,8 +109,8 @@ export default function AddScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <SaveHeader
-          title="Add Habit"
-          description="Create a new habit to track your progress and improve your life."
+          title="Edit Habit"
+          description="Make changes to your habit"
           onSave={onSave}
         />
         <HabitForm value={habit} onChange={setHabit} error={error} />
