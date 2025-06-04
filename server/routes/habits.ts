@@ -110,7 +110,23 @@ export default function createHabitsRouter(db: sqlite3.Database) {
               res.status(500).json({ error: err.message });
               return;
             }
-            res.status(201).json(row);
+            // Defensive: ensure row is an object and cast it
+            if (!row || typeof row !== "object") {
+              res.status(500).json({ error: "Failed to fetch created habit" });
+              return;
+            }
+            const habit = row as any;
+            res.status(201).json({
+              id: habit.id,
+              user_id: habit.user_id,
+              title: habit.title,
+              frequency: habit.frequency,
+              tags: JSON.parse(habit.tags || "[]"),
+              created_at: habit.created_at,
+              streak_count: 0,
+              completed_today: false,
+              total_completions: 0,
+            });
           }
         );
       }
