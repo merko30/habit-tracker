@@ -8,6 +8,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
 import NetInfo from "@react-native-community/netinfo";
+import { useRouter } from "expo-router";
 
 import Animated, {
   runOnJS,
@@ -52,15 +53,22 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   const onDeleteHabit = async () => {
     try {
       await deleteHabit(habit.id);
+
       shouldRemove.value = 1;
       position.value = withTiming(-wWidth, { duration: 300 });
     } catch (error: any) {
       console.log("Error deleting habit:", error.message);
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to delete habit. Please try again.",
-      });
+      const localHabits = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
+      if (localHabits) {
+        const habits = JSON.parse(localHabits);
+        const updatedHabits = habits.filter((h: Habit) => h.id !== habit.id);
+        console.log("Updated habits after deletion:", updatedHabits);
+
+        await AsyncStorage.setItem(
+          HABITS_STORAGE_KEY,
+          JSON.stringify(updatedHabits)
+        );
+      }
     }
   };
 
@@ -187,6 +195,7 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
               }
             />
             <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
+            <ThemedText>{habit.id}</ThemedText>
           </ThemedView>
           <ThemedView
             style={[

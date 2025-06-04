@@ -7,7 +7,6 @@ import {
   useColorScheme,
   View,
 } from "react-native";
-import NetInfo from "@react-native-community/netinfo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
@@ -67,22 +66,24 @@ export default function AddScreen() {
     });
   };
 
-  const saveToAsyncStorage = async (
-    habit: Omit<Habit, "created_at" | "streak_count" | "id">
-  ) => {
+  const saveToAsyncStorage = async (habit: Partial<Habit>) => {
     try {
       const existingHabits = await AsyncStorage.getItem("habits");
 
       const habits = existingHabits ? JSON.parse(existingHabits) : [];
       const newHabit = {
         ...habit,
-        created_at: new Date().toISOString(),
         streak_count: 0,
         completed_today: false,
-        id: `offline-${Date.now()}`, // Temporary ID for offline habits
+        ...(!habit.id
+          ? {
+              id: `offline-${Date.now()}`, // Temporary ID for offline habits
+              created_at: new Date().toISOString(),
+            }
+          : {}),
       };
       const habitExists = habits.some(
-        (h: Habit) => normalize(h.title) === normalize(newHabit.title)
+        (h: Habit) => normalize(h.title) === normalize(newHabit.title!)
       );
       if (habitExists) {
         setError("A habit with this title already exists.");
@@ -117,29 +118,34 @@ export default function AddScreen() {
       return;
     }
 
-    const netState = await NetInfo.fetch();
-    if (netState.isConnected) {
-      try {
-        const newHabit = await saveToApi(habit);
-        console.log("Habit saved successfully:", newHabit);
-        Toast.show({
-          type: "success",
-          text1: "Habit saved successfully!",
-          position: "bottom",
-          visibilityTime: 2000,
-        });
-        setHabit(initialValues);
-        router.navigate("/?refresh=true"); // Refresh the home screen
-      } catch (error) {
-        const newHabit = await saveToAsyncStorage(habit);
-        router.navigate("/?refresh=true"); // Refresh the home screen
-      }
-    } else {
-      const newHabit = await saveToAsyncStorage(habit);
-      router.navigate("/?refresh=true"); // Refresh the home screen
+    try {
+      const newHabit = await saveToApi(habit);
 
-      console.log("Habit saved to AsyncStorage:", newHabit);
-      // Optionally navigate back or show success message
+      // Add to local storage if not a duplicate
+      const existingRaw = await AsyncStorage.getItem("habits");
+      const existing: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+      const exists = existing.some(
+        (h) => normalize(h.title) === normalize(newHabit.title)
+      );
+
+      if (!exists) {
+        const updated = [...existing, newHabit];
+        await AsyncStorage.setItem("habits", JSON.stringify(updated));
+      }
+
+      Toast.show({
+        type: "success",
+        text1: "Habit saved successfully!",
+        position: "bottom",
+        visibilityTime: 2000,
+      });
+      setHabit(initialValues);
+      router.navigate("/?refresh=true"); // Refresh the home screen
+    } catch (error) {
+      console.log(error);
+      await saveToAsyncStorage(habit);
+      router.navigate("/?refresh=true"); // Refresh the home screen
     }
   };
 

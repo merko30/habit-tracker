@@ -6,14 +6,11 @@ export async function getHabits(): Promise<Habit[]> {
   return await axios.get("/habits").then((response) => response.data);
 }
 
-export async function createHabit(data: { title: string; frequency: string }) {
+export async function createHabit(data: Partial<Habit>): Promise<Habit> {
   return await axios.post("/habits", data).then((response) => response.data);
 }
 
-export async function updateHabit(
-  id: number,
-  data: { title: string; frequency: string; streak_count: number }
-) {
+export async function updateHabit(id: number, data: Partial<Habit>) {
   return await axios
     .put(`/habits/${id}`, data)
     .then((response) => response.data);

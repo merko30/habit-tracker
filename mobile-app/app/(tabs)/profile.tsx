@@ -1,4 +1,10 @@
-import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
+import {
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 
@@ -64,6 +70,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 16,
+    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
   },
   description: {
     marginBottom: 16,

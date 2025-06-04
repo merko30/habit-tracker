@@ -9,6 +9,8 @@ const API_URL =
 
 // header token
 
+console.log("API URL:", API_URL);
+
 const axios = Axios.create({
   baseURL: API_URL,
   headers: {
