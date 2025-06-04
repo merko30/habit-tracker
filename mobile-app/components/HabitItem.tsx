@@ -8,7 +8,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
 import NetInfo from "@react-native-community/netinfo";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 
 import Animated, {
   runOnJS,
@@ -49,6 +49,8 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
 
   const shouldRemove = useSharedValue<0 | 1>(0);
   const position = useSharedValue(INITIAL_POSITION);
+
+  const router = useRouter();
 
   const onDeleteHabit = async () => {
     try {
@@ -111,32 +113,36 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
     zIndex: position.value > -50 ? 20 : -1,
   }));
 
+  const updateStorage = async (habit: Habit) => {
+    const habitsFromStorage = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
+    if (habitsFromStorage) {
+      const habits = JSON.parse(habitsFromStorage);
+      const updatedHabits = habits.map((h: Habit) =>
+        h.id === habit.id
+          ? {
+              ...h,
+              completed_today: !h.completed_today,
+              streak_count: h.completed_today
+                ? h.streak_count - 1
+                : h.streak_count + 1,
+            }
+          : h
+      );
+      await AsyncStorage.setItem("habits", JSON.stringify(updatedHabits));
+    }
+  };
+
   const onComplete = async () => {
     const netState = await NetInfo.fetch();
     if (!netState.isConnected) {
-      const habitsFromStorage = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
-      if (habitsFromStorage) {
-        const habits = JSON.parse(habitsFromStorage);
-        const updatedHabits = habits.map((h: Habit) =>
-          h.id === habit.id
-            ? {
-                ...h,
-                completed_today: !h.completed_today,
-                streak_count: h.completed_today
-                  ? h.streak_count - 1
-                  : h.streak_count + 1,
-              }
-            : h
-        );
-        await AsyncStorage.setItem("habits", JSON.stringify(updatedHabits));
-      }
-
+      await updateStorage(habit);
       Toast.show({
         type: "info",
         text1: "Offline Mode",
         text2: "Changes will sync when online.",
       });
     }
+
     try {
       setHabit((old) => ({
         ...old,
@@ -150,6 +156,7 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
         date: new Date().toISOString().split("T")[0], // yyyy-mm-dd format
         completed: !habit.completed_today,
       });
+      await updateStorage(habit);
     } catch (error) {
       console.log(error);
 

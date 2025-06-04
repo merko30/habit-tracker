@@ -1,15 +1,23 @@
-import API_URL from "./config";
+import axios from "./config";
 
 export async function getCompletions() {
-  const res = await fetch(`${API_URL}/completions`);
-  if (!res.ok) throw new Error("Failed to fetch completions");
-  return res.json();
+  return axios
+    .get("/completions")
+    .then((res) => res.data)
+    .catch((err) => {
+      console.error("Failed to fetch completions:", err);
+      throw new Error("Failed to fetch completions");
+    });
 }
 
 export async function getCompletion(id: number) {
-  const res = await fetch(`${API_URL}/completions/${id}`);
-  if (!res.ok) throw new Error("Failed to fetch completion");
-  return res.json();
+  return axios
+    .get(`/completions/${id}`)
+    .then((res) => res.data)
+    .catch((err) => {
+      console.error("Failed to fetch completion:", err);
+      throw new Error("Failed to fetch completion");
+    });
 }
 
 export async function createCompletion(data: {
@@ -17,30 +25,34 @@ export async function createCompletion(data: {
   date: string;
   completed: boolean;
 }) {
-  const res = await fetch(`${API_URL}/completions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to create completion");
-  return res.json();
+  return axios
+    .post("/completions", data)
+    .then((res) => res.data)
+    .catch((err) => {
+      console.error("Failed to create completion:", err);
+      throw new Error("Failed to create completion");
+    });
 }
 
 export async function updateCompletion(
   id: number,
   data: { completed: boolean }
 ) {
-  const res = await fetch(`${API_URL}/completions/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(data),
-  });
-  if (!res.ok) throw new Error("Failed to update completion");
-  return res.json();
+  return axios
+    .put(`/completions/${id}`, data)
+    .then((res) => res.data)
+    .catch((err) => {
+      console.error("Failed to update completion:", err);
+      throw new Error("Failed to update completion");
+    });
 }
 
 export async function deleteCompletion(id: number) {
-  const res = await fetch(`${API_URL}/completions/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete completion");
-  return res.json();
+  return axios
+    .delete(`/completions/${id}`)
+    .then((res) => res.data)
+    .catch((err) => {
+      console.error("Failed to delete completion:", err);
+      throw new Error("Failed to delete completion");
+    });
 }

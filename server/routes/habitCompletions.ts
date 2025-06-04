@@ -1,6 +1,7 @@
 import { Router } from "express";
 import sqlite3 from "sqlite3";
 import { HabitCompletion } from "../types";
+import { authMiddleware } from "../middleware/auth";
 
 export default function createHabitCompletionsRouter(db: sqlite3.Database) {
   const router = Router();
@@ -49,7 +50,7 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
   });
 
   // POST /completions
-  router.post("/", (req, res) => {
+  router.post("/", authMiddleware, (req, res) => {
     const { habit_id, date, completed } = req.body;
     if (!habit_id || !date || typeof completed !== "boolean") {
       res.status(400).json({ error: "Missing fields" });
