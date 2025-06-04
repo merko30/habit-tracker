@@ -5,7 +5,6 @@ import {
   StatusBar,
   StyleSheet,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
 import Field from "@/components/Field";
@@ -19,54 +18,39 @@ import Toast from "react-native-toast-message";
 
 export default function Profile() {
   const [user, setUser] = useState({
-    name: "John Doe",
-    age: 30,
-    timeZone: "Etc/GMT",
+    name: "",
+    age: 0,
+    timeZone: "",
   });
 
   const { logOut: onLogout, user: loggedInUser } = useAuth();
 
   useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const userData = await AsyncStorage.getItem("user");
-
-        if (userData) {
-          setUser(
-            JSON.parse(userData) || {
-              name: loggedInUser?.display_name || "John Doe",
-              age: loggedInUser?.age || 30,
-              timeZone: loggedInUser?.timezone || "Etc/GMT",
-            }
-          );
-        }
-      } catch (error) {
-        console.error("Failed to load user data from storage:", error);
-      }
-    };
-    loadUserData();
+    setUser({
+      name: loggedInUser?.display_name || "John Doe",
+      age: loggedInUser?.age || 30,
+      timeZone: loggedInUser?.timezone || "Etc/GMT",
+    });
   }, [loggedInUser]);
 
   const onSave = async () => {
-    // save data to AsyncStorage
     try {
       await updateUserProfile({
         name: user.name,
         age: user.age,
         timeZone: user.timeZone,
       });
-      await AsyncStorage.setItem("user", JSON.stringify(user));
       Toast.show({
         type: "success",
         text1: "Profile updated",
         text2: "Your profile details have been saved successfully.",
       });
     } catch (error) {
-      await AsyncStorage.setItem("user", JSON.stringify(user));
+      console.error("Failed to update profile:", error);
       Toast.show({
-        type: "info",
-        text1: "Profile update failed",
-        text2: "Information saved locally. Please try again later.",
+        type: "error",
+        text1: "Error updating profile",
+        text2: "There was an error saving your profile details.",
       });
     }
   };
