@@ -77,8 +77,6 @@ export default function HomeScreen() {
       const remoteMap = new Map(habitsFromDatabase.map((h) => [h.id, h]));
       const localMap = new Map(localHabits.map((h) => [h.id, h]));
 
-      console.log(localMap);
-
       // Step 1: DELETE remote habits not in local
       for (const remoteHabit of habitsFromDatabase) {
         if (!localMap.has(remoteHabit.id)) {
@@ -97,14 +95,38 @@ export default function HomeScreen() {
         if (isOfflineId) {
           try {
             const { id, ...data } = localHabit;
-
-            const created = await createHabit(data);
+            // Ensure tags is an array before sending to API
+            const habitData = {
+              ...data,
+              tags: Array.isArray(data.tags)
+                ? data.tags
+                : (() => {
+                    try {
+                      return JSON.parse(data.tags);
+                    } catch {
+                      return [];
+                    }
+                  })(),
+            };
+            const created = await createHabit(habitData);
             cleanedLocalHabits.push(created); // add newly created habit with real ID
           } catch (err) {
             console.warn(`Failed to create habit: ${localHabit.title}`, err);
           }
         } else {
-          cleanedLocalHabits.push(localHabit); // keep existing synced habit
+          // Ensure tags is always an array (not stringified)
+          cleanedLocalHabits.push({
+            ...localHabit,
+            tags: Array.isArray(localHabit.tags)
+              ? localHabit.tags
+              : (() => {
+                  try {
+                    return JSON.parse(localHabit.tags);
+                  } catch {
+                    return [];
+                  }
+                })(),
+          });
         }
       }
 

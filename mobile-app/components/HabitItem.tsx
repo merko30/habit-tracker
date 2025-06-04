@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Dimensions,
   Pressable,
+  View,
 } from "react-native";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
@@ -49,8 +50,6 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
 
   const shouldRemove = useSharedValue<0 | 1>(0);
   const position = useSharedValue(INITIAL_POSITION);
-
-  const router = useRouter();
 
   const onDeleteHabit = async () => {
     try {
@@ -202,8 +201,10 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
               }
             />
             <Link href={{ pathname: "/list/[id]", params: { id: habit.id } }}>
-              <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
-              <ThemedText>{habit.id}</ThemedText>
+              <View>
+                <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
+                <ThemedText>{habit.id}</ThemedText>
+              </View>
             </Link>
           </ThemedView>
           <ThemedView

@@ -167,10 +167,65 @@ export default function createHabitsRouter(db: sqlite3.Database) {
               res.status(500).json({ error: err.message });
               return;
             }
-
-            console.log(this);
-
-            res.json({ updated: this.changes });
+            // Fetch the updated habit and return with computed fields
+            db.get(
+              `SELECT h.*, 
+                (
+                  SELECT COUNT(*) FROM habit_completions hc WHERE hc.habit_id = h.id AND hc.completed = 1
+                ) AS total_completions,
+                EXISTS (
+                  SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
+                ) AS completed_today
+              FROM habits h WHERE h.id = ?`,
+              [id],
+              (err, row) => {
+                if (err) {
+                  res.status(500).json({ error: err.message });
+                  return;
+                }
+                if (!row || typeof row !== "object") {
+                  res
+                    .status(500)
+                    .json({ error: "Failed to fetch updated habit" });
+                  return;
+                }
+                const habit = row as any;
+                // Calculate streak_count
+                db.all<{ date: string }>(
+                  `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
+                  [id],
+                  (err, rows) => {
+                    let streak = 0;
+                    let current: Date | null = null;
+                    for (const row of rows || []) {
+                      const rowDate = new Date(row.date);
+                      if (streak === 0) current = rowDate;
+                      if (
+                        current &&
+                        rowDate.toISOString().slice(0, 10) ===
+                          current.toISOString().slice(0, 10)
+                      ) {
+                        streak++;
+                        current.setDate(current.getDate() - 1);
+                      } else {
+                        break;
+                      }
+                    }
+                    res.json({
+                      id: habit.id,
+                      user_id: habit.user_id,
+                      title: habit.title,
+                      frequency: habit.frequency,
+                      tags: JSON.parse(habit.tags || "[]"),
+                      created_at: habit.created_at,
+                      streak_count: streak,
+                      completed_today: Boolean(habit.completed_today),
+                      total_completions: habit.total_completions,
+                    });
+                  }
+                );
+              }
+            );
           }
         );
       }
