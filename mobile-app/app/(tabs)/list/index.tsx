@@ -162,7 +162,7 @@ export default function HomeScreen() {
           </ThemedText>
         </View>
         <FlatList
-          data={habits}
+          data={habits.sort((a, b) => a.created_at.localeCompare(b.created_at))}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => <HabitItem habit={item} />}
           ListEmptyComponent={

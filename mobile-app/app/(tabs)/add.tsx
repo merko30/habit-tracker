@@ -14,7 +14,7 @@ import HabitForm from "@/components/HabitForm";
 import SaveHeader from "@/components/SaveHeader";
 import { createHabit } from "@/api/habits";
 import { Habit } from "@/types";
-import { HabitFormValues, initialValues } from "@/utils";
+import { HabitFormValues, initialValues, normalize } from "@/utils";
 
 export default function AddScreen() {
   const [habit, setHabit] = useState<HabitFormValues>(initialValues);
@@ -90,11 +90,11 @@ export default function AddScreen() {
         visibilityTime: 2000,
       });
       setHabit(initialValues);
-      router.navigate("/?refresh=true");
+      router.navigate("/list?refresh=true");
     } catch (error) {
       console.log(error);
       await saveToAsyncStorage(habit);
-      router.navigate("/?refresh=true");
+      router.navigate("/list?refresh=true");
     }
   };
 

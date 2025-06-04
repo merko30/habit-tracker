@@ -30,7 +30,7 @@ const LoginScreen = () => {
 
       setLoggedIn!(true);
 
-      router.push("/");
+      router.push("/list");
     } catch (error: any) {
       console.log("Login failed:", error.message);
       Toast.show({

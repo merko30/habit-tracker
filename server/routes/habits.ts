@@ -151,6 +151,9 @@ export default function createHabitsRouter(db: sqlite3.Database) {
               res.status(500).json({ error: err.message });
               return;
             }
+
+            console.log(this);
+
             res.json({ updated: this.changes });
           }
         );
