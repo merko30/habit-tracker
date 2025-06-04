@@ -22,3 +22,11 @@ export async function loginUser(data: {
 export async function getUserProfile() {
   return axios.get("/profile").then((response) => response.data);
 }
+
+export async function updateUserProfile(data: {
+  name?: string;
+  age?: number;
+  timeZone?: string;
+}) {
+  return axios.put("/profile", data).then((response) => response.data);
+}

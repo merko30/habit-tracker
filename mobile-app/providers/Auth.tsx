@@ -7,11 +7,24 @@ export interface IAuthContext {
   loading: boolean;
   setLoggedIn?: (value: boolean) => void;
   logOut: () => void;
+  user: IUser | null;
+}
+
+export interface IUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  age: number;
+  display_name?: string;
+  timezone?: string;
+  // Add other user properties as needed
 }
 
 export const AuthContext = createContext<IAuthContext>({
   loggedIn: false,
   loading: false,
+  user: null,
   logOut: () => {},
 });
 
