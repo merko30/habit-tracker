@@ -17,14 +17,54 @@ import { getHabits } from "@/api/habits";
 import { Habit } from "@/types";
 import HabitItem from "@/components/HabitItem";
 import { ThemedView } from "@/components/ThemedView";
+import { createCompletion } from "@/api/completions";
 
 import { HABITS_STORAGE_KEY } from "@/constants";
+import { useAuth } from "@/providers/Auth";
+
+const PENDING_COMPLETIONS_KEY = "pendingCompletions";
+type PendingCompletion = {
+  habit_id: number;
+  date: string;
+  completed: boolean;
+};
+
+const syncPendingCompletions = async () => {
+  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
+  if (!existing) return;
+  const pending: PendingCompletion[] = JSON.parse(existing);
+  if (!Array.isArray(pending) || pending.length === 0) return;
+  const successful: PendingCompletion[] = [];
+  for (const completion of pending) {
+    try {
+      await createCompletion(completion);
+      successful.push(completion);
+    } catch {
+      // If fails, keep in pending
+    }
+  }
+  // Remove successful from pending
+  const remaining = pending.filter(
+    (c) =>
+      !successful.some((s) => s.habit_id === c.habit_id && s.date === c.date)
+  );
+  if (remaining.length === 0) {
+    await AsyncStorage.removeItem(PENDING_COMPLETIONS_KEY);
+  } else {
+    await AsyncStorage.setItem(
+      PENDING_COMPLETIONS_KEY,
+      JSON.stringify(remaining)
+    );
+  }
+};
 
 export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const syncingRef = useRef(false);
+
+  const { user } = useAuth();
 
   const { refresh } = useLocalSearchParams();
 
@@ -62,6 +102,7 @@ export default function HomeScreen() {
     if (syncingRef.current) return;
     syncingRef.current = true;
     try {
+      await syncPendingCompletions();
       const habitsFromStorageRaw = await AsyncStorage.getItem(
         HABITS_STORAGE_KEY
       );
@@ -178,7 +219,9 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View>
         <View style={styles.headerContent}>
-          <ThemedText type="title">Hello, John Doe!</ThemedText>
+          <ThemedText type="title">
+            Hello, {user.displayName || user.username}
+          </ThemedText>
           <ThemedText type="subtitle" style={styles.subtitle}>
             Your Habits
           </ThemedText>

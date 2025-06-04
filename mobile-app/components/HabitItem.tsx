@@ -44,6 +44,50 @@ const getPosition = (value: number) => {
 const INITIAL_POSITION = 0;
 const HEIGHT = 70;
 
+const PENDING_COMPLETIONS_KEY = "pendingCompletions";
+
+type PendingCompletion = {
+  habit_id: number;
+  date: string;
+  completed: boolean;
+};
+
+const savePendingCompletion = async (completion: PendingCompletion) => {
+  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
+  const pending: PendingCompletion[] = existing ? JSON.parse(existing) : [];
+  pending.push(completion);
+  await AsyncStorage.setItem(PENDING_COMPLETIONS_KEY, JSON.stringify(pending));
+};
+
+const syncPendingCompletions = async () => {
+  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
+  if (!existing) return;
+  const pending: PendingCompletion[] = JSON.parse(existing);
+  if (!Array.isArray(pending) || pending.length === 0) return;
+  const successful: PendingCompletion[] = [];
+  for (const completion of pending) {
+    try {
+      await createCompletion(completion);
+      successful.push(completion);
+    } catch {
+      // If fails, keep in pending
+    }
+  }
+  // Remove successful from pending
+  const remaining = pending.filter(
+    (c) =>
+      !successful.some((s) => s.habit_id === c.habit_id && s.date === c.date)
+  );
+  if (remaining.length === 0) {
+    await AsyncStorage.removeItem(PENDING_COMPLETIONS_KEY);
+  } else {
+    await AsyncStorage.setItem(
+      PENDING_COMPLETIONS_KEY,
+      JSON.stringify(remaining)
+    );
+  }
+};
+
 const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   const [habit, setHabit] = useState<Habit>(_habit);
   const colorScheme = useColorScheme();
@@ -133,13 +177,27 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
 
   const onComplete = async () => {
     const netState = await NetInfo.fetch();
+    const completion: PendingCompletion = {
+      habit_id: habit.id,
+      date: new Date().toISOString().split("T")[0],
+      completed: !habit.completed_today,
+    };
     if (!netState.isConnected) {
       await updateStorage(habit);
+      await savePendingCompletion(completion);
       Toast.show({
         type: "info",
         text1: "Offline Mode",
         text2: "Changes will sync when online.",
       });
+      setHabit((old) => ({
+        ...old,
+        completed_today: !old.completed_today,
+        streak_count: old.completed_today
+          ? old.streak_count - 1
+          : old.streak_count + 1,
+      }));
+      return;
     }
 
     try {
@@ -150,15 +208,11 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
           ? old.streak_count - 1
           : old.streak_count + 1,
       }));
-      await createCompletion({
-        habit_id: habit.id,
-        date: new Date().toISOString().split("T")[0], // yyyy-mm-dd format
-        completed: !habit.completed_today,
-      });
+      await createCompletion(completion);
+      await syncPendingCompletions();
+    } catch {
       await updateStorage(habit);
-    } catch (error) {
-      console.log(error);
-
+      await savePendingCompletion(completion);
       setHabit((old) => ({
         ...old,
         completed_today: !old.completed_today, // Revert the completion state
@@ -166,11 +220,6 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
           ? old.streak_count + 1
           : old.streak_count - 1, // Adjust streak count accordingly
       })); // Revert state on error
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "Failed to update habit completion. Please try again.",
-      });
     }
   };
 

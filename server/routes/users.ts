@@ -5,7 +5,7 @@ import sqlite3 from "sqlite3";
 
 import { User } from "../types"; // Assuming you have a User type defined
 
-import { JWT_SECRET } from "../middleware/auth"; // Assuming you have a config file for your JWT secret
+import { authMiddleware, JWT_SECRET } from "../middleware/auth"; // Assuming you have a config file for your JWT secret
 
 export default function createUsersRouter(db: sqlite3.Database) {
   const router = Router();
@@ -92,12 +92,8 @@ export default function createUsersRouter(db: sqlite3.Database) {
   });
 
   // Get user by id
-  router.get("/users/:id", (req, res) => {
-    const id = Number(req.params.id);
-    if (isNaN(id)) {
-      res.status(400).json({ error: "Invalid ID" });
-      return;
-    }
+  router.get("/profile", authMiddleware, (req, res) => {
+    const id = (req as any).userId; // Assuming userId is set by auth middleware
     db.get(
       `SELECT id, username, email, age, timezone, display_name, created_at FROM users WHERE id = ?`,
       [id],

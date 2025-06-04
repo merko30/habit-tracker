@@ -74,15 +74,7 @@ export default function AddScreen() {
     }
     try {
       const newHabit = await saveToApi(habit);
-      const existingRaw = await AsyncStorage.getItem("habits");
-      const existing: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
-      const exists = existing.some(
-        (h) => normalize(h.title) === normalize(newHabit.title)
-      );
-      if (!exists) {
-        const updated = [...existing, newHabit];
-        await AsyncStorage.setItem("habits", JSON.stringify(updated));
-      }
+      await saveToAsyncStorage(newHabit ?? habit);
       Toast.show({
         type: "success",
         text1: "Habit saved successfully!",

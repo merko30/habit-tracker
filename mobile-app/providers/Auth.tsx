@@ -1,10 +1,6 @@
-import React, {
-  createContext,
-  SetStateAction,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useEffect, useMemo, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserProfile } from "@/api/users";
 
 export interface IAuthContext {
   loggedIn: boolean;
@@ -28,40 +24,49 @@ export const useAuth = () => {
 };
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [loggedIn, setLoggedIn] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [state, setState] = useState({
+    loggedIn: false,
+    loading: true,
+    user: null,
+  });
 
   useEffect(() => {
     (async () => {
       const token = await AsyncStorage.getItem("token");
 
-      setTimeout(() => {
-        if (token) {
-          setLoggedIn(true);
-        }
-
-        setLoading(false);
-      }, 1000); // Simulate loading delay
+      if (token) {
+        const user = await getUserProfile();
+        setState((prev) => ({
+          ...prev,
+          loggedIn: true,
+          loading: false,
+          user,
+        }));
+      }
     })();
   }, []);
 
   const logOut = async () => {
     await AsyncStorage.removeItem("token");
-    setLoggedIn(false);
+    setState((prev) => ({
+      ...prev,
+      loggedIn: false,
+      user: null,
+    }));
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        loggedIn,
-        loading,
-        logOut,
-        setLoggedIn,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const data = useMemo(() => {
+    return {
+      loggedIn: state.loggedIn,
+      loading: state.loading,
+      user: state.user,
+      setLoggedIn: (value: boolean) =>
+        setState((prev) => ({ ...prev, loggedIn: value })),
+      logOut,
+    };
+  }, [state.loggedIn, state.loading, state.user]);
+
+  return <AuthContext.Provider value={data}>{children}</AuthContext.Provider>;
 };
 
 export default AuthProvider;

@@ -82,7 +82,6 @@ export default function HabitEditScreen() {
       const newHabit = await saveToApi(habit);
       const existingRaw = await AsyncStorage.getItem("habits");
       const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
-      console.log(newHabit);
 
       await AsyncStorage.setItem(
         "habits",

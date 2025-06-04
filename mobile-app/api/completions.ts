@@ -25,13 +25,7 @@ export async function createCompletion(data: {
   date: string;
   completed: boolean;
 }) {
-  return axios
-    .post("/completions", data)
-    .then((res) => res.data)
-    .catch((err) => {
-      console.error("Failed to create completion:", err);
-      throw new Error("Failed to create completion");
-    });
+  return axios.post("/completions", data).then((res) => res.data);
 }
 
 export async function updateCompletion(
