@@ -96,11 +96,11 @@ export default function HabitEditScreen() {
         position: "bottom",
         visibilityTime: 2000,
       });
-      router.navigate("/list?refresh=true");
+      router.push("/list?refresh=" + Date.now());
     } catch (error) {
       console.log(error);
       await saveToAsyncStorage(habit);
-      router.navigate("/list?refresh=true");
+      router.push("/list?refresh=" + Date.now());
     }
   };
 
