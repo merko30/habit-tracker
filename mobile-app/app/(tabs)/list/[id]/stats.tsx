@@ -173,6 +173,7 @@ export default function HabitStatsScreen() {
       try {
         const data = await getWeeklyAndMonthlyStats(id as string);
         setData(data);
+        console.log(JSON.stringify(data, null, 2));
       } catch (error) {
         setError("Failed to load data");
       }
