@@ -1,23 +1,28 @@
 import { useEffect, useState } from "react";
 import {
   Platform,
+  Pressable,
   SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
+  Text,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { useRouter, useLocalSearchParams } from "expo-router";
+// Use Link from react-native for now as a fallback
 
 import HabitForm from "@/components/HabitForm";
 import SaveHeader from "@/components/SaveHeader";
 import { getHabit, updateHabit } from "@/api/habits";
 import { Habit } from "@/types";
 import { HabitFormValues, initialValues } from "@/utils";
+import { Colors } from "@/constants/Colors";
 
 export default function HabitEditScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id: idRaw } = useLocalSearchParams<{ id: string }>();
+  const id = Number(idRaw);
 
   const [habit, setHabit] = useState<HabitFormValues>(initialValues);
   const [error, setError] = useState<string | null>(null);
@@ -118,6 +123,19 @@ export default function HabitEditScreen() {
           description="Make changes to your habit"
           onSave={onSave}
         />
+        <Pressable
+          onPress={() =>
+            router.push({ pathname: "/list/[id]/stats", params: { id } })
+          }
+          style={[
+            styles.link,
+            {
+              backgroundColor: Colors.light.tint,
+            },
+          ]}
+        >
+          <Text style={{ color: "#fff", fontWeight: "600" }}>Statistics</Text>
+        </Pressable>
         <HabitForm value={habit} onChange={setHabit} error={error} />
       </ScrollView>
     </SafeAreaView>
@@ -139,6 +157,13 @@ const styles = StyleSheet.create({
   },
   titleContainer: {
     flex: 1,
+  },
+  link: {
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 8,
+    borderRadius: 8,
+    marginBottom: 16,
   },
   error: {
     color: "red",
