@@ -8,6 +8,7 @@ export interface Habit {
   created_at: string; // ISO date string
   streak_count: number;
   completed_today?: boolean; // Optional, used for UI indication
+  updated?: boolean; // <-- add this line
 }
 
 // users

@@ -251,7 +251,13 @@ export default function HomeScreen() {
     () =>
       habits
         .slice()
-        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .sort((a, b) => {
+          // Prioritize updated habits
+          if (a.updated && !b.updated) return -1;
+          if (!a.updated && b.updated) return 1;
+          // Then sort by created_at
+          return a.created_at.localeCompare(b.created_at);
+        })
         .filter((habit) => !habit.deleted),
     [habits]
   );

@@ -95,9 +95,7 @@ export default function HabitEditScreen() {
     }
     try {
       const newHabit = await saveToApi(habit);
-
       await saveToAsyncStorage(newHabit);
-
       Toast.show({
         type: "success",
         text1: "Habit saved successfully!",
@@ -107,7 +105,8 @@ export default function HabitEditScreen() {
       router.push("/list?refresh=" + Date.now());
     } catch (error) {
       console.log(error);
-      await saveToAsyncStorage(habit);
+      // Mark as updated if offline
+      await saveToAsyncStorage({ ...habit, id, updated: true });
       router.push("/list?refresh=" + Date.now());
     }
   };
