@@ -20,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { snapPoint } from "react-native-redash";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Colors } from "@/constants/Colors";
 import { Habit } from "@/types";
@@ -28,65 +29,20 @@ import { createCompletion } from "@/api/completions";
 import { ThemedText } from "./ThemedText";
 import { ThemedView } from "./ThemedView";
 import { deleteHabit } from "@/api/habits";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { HABITS_STORAGE_KEY } from "@/constants";
 
+import {
+  INITIAL_POSITION,
+  SNAP_POINTS,
+  getPosition,
+  syncPendingCompletions,
+  savePendingCompletion,
+  ICONS_WIDTH,
+  HEIGHT,
+  PendingCompletion,
+} from "./HabitItem/utils";
+
 const { width: wWidth } = Dimensions.get("window");
-
-const ICONS_WIDTH = 60;
-const SNAP_POINTS = [-wWidth, -ICONS_WIDTH, 0];
-
-const getPosition = (value: number) => {
-  "worklet";
-  return withTiming(value, { duration: 300 });
-};
-
-const INITIAL_POSITION = 0;
-const HEIGHT = 70;
-
-const PENDING_COMPLETIONS_KEY = "pendingCompletions";
-
-type PendingCompletion = {
-  habit_id: number;
-  date: string;
-  completed: boolean;
-};
-
-const savePendingCompletion = async (completion: PendingCompletion) => {
-  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
-  const pending: PendingCompletion[] = existing ? JSON.parse(existing) : [];
-  pending.push(completion);
-  await AsyncStorage.setItem(PENDING_COMPLETIONS_KEY, JSON.stringify(pending));
-};
-
-const syncPendingCompletions = async () => {
-  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
-  if (!existing) return;
-  const pending: PendingCompletion[] = JSON.parse(existing);
-  if (!Array.isArray(pending) || pending.length === 0) return;
-  const successful: PendingCompletion[] = [];
-  for (const completion of pending) {
-    try {
-      await createCompletion(completion);
-      successful.push(completion);
-    } catch {
-      // If fails, keep in pending
-    }
-  }
-  // Remove successful from pending
-  const remaining = pending.filter(
-    (c) =>
-      !successful.some((s) => s.habit_id === c.habit_id && s.date === c.date)
-  );
-  if (remaining.length === 0) {
-    await AsyncStorage.removeItem(PENDING_COMPLETIONS_KEY);
-  } else {
-    await AsyncStorage.setItem(
-      PENDING_COMPLETIONS_KEY,
-      JSON.stringify(remaining)
-    );
-  }
-};
 
 const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
   const [habit, setHabit] = useState<Habit>(_habit);
