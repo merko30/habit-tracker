@@ -38,4 +38,4 @@ yarn-error.*
 
 app-example
 
-habits.db
+server/habits.db

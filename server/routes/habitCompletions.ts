@@ -7,10 +7,12 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
   const router = Router();
 
   // GET /completions
-  router.get("/", (req, res) => {
+  router.get("/", authMiddleware, (req, res) => {
+    const userId = (req as any).userId;
     db.all(
-      "SELECT * FROM habit_completions",
-      [],
+      // habit user id
+      "SELECT * FROM habit_completions WHERE habit_id IN (SELECT id FROM habits WHERE user_id = ?) ORDER BY date DESC",
+      [userId],
       (err, rows: HabitCompletion[]) => {
         if (err) {
           res.status(500).json({ error: err.message });

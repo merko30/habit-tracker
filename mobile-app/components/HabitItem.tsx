@@ -9,7 +9,7 @@ import {
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Toast from "react-native-toast-message";
 import NetInfo from "@react-native-community/netinfo";
-import { Link, useRouter } from "expo-router";
+import { Link } from "expo-router";
 
 import Animated, {
   runOnJS,

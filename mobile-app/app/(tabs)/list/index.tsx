@@ -21,6 +21,7 @@ import { createCompletion } from "@/api/completions";
 
 import { HABITS_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/Auth";
+import { useCalculateRisk } from "@/utils/calculateRisk";
 
 const PENDING_COMPLETIONS_KEY = "pendingCompletions";
 type PendingCompletion = {
@@ -58,8 +59,12 @@ const syncPendingCompletions = async () => {
   }
 };
 
+type DeletedHabit = Habit & {
+  deleted?: boolean;
+};
+
 export default function HomeScreen() {
-  const [habits, setHabits] = useState<Habit[]>([]);
+  const [habits, setHabits] = useState<DeletedHabit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const syncingRef = useRef(false);
@@ -67,6 +72,8 @@ export default function HomeScreen() {
   const { user } = useAuth();
 
   const { refresh } = useLocalSearchParams();
+
+  const note = useCalculateRisk();
 
   // Add loadHabitsFromStorage if not present
   const loadHabitsFromStorage = async () => {
@@ -113,20 +120,24 @@ export default function HomeScreen() {
         "@/api/habits"
       );
 
-      let localHabits: Habit[] = habitsFromStorageRaw
+      let localHabits: DeletedHabit[] = habitsFromStorageRaw
         ? JSON.parse(habitsFromStorageRaw)
         : [];
 
-      const remoteMap = new Map(habitsFromDatabase.map((h) => [h.id, h]));
       const localMap = new Map(localHabits.map((h) => [h.id, h]));
+      const serverMap = new Map(habitsFromDatabase.map((h) => [h.id, h]));
 
-      // Step 1: DELETE remote habits not in local
-      for (const remoteHabit of habitsFromDatabase) {
-        if (!localMap.has(remoteHabit.id)) {
+      // check "deleted" field in local habits
+      const habitsToDelete = localHabits.filter((h) => !h.deleted);
+      // Step 1: DELETE habits that are marked as deleted
+      for (const habit of habitsToDelete) {
+        if (habit.deleted) {
           try {
-            await deleteHabit(remoteHabit.id);
+            await deleteHabit(habit.id);
+            // Remove from local storage
+            localHabits = localHabits.filter((h) => h.id !== habit.id);
           } catch (err) {
-            console.warn(`Failed to delete habit: ${remoteHabit.title}`, err);
+            console.warn(`Failed to delete habit: ${habit.title}`, err);
           }
         }
       }
@@ -222,7 +233,10 @@ export default function HomeScreen() {
 
   const sortedHabits = useMemo(
     () =>
-      habits.slice().sort((a, b) => a.created_at.localeCompare(b.created_at)),
+      habits
+        .slice()
+        .sort((a, b) => a.created_at.localeCompare(b.created_at))
+        .filter((habit) => !habit.deleted),
     [habits]
   );
 
@@ -237,6 +251,11 @@ export default function HomeScreen() {
             Your Habits
           </ThemedText>
         </View>
+        {note && (
+          <View style={styles.infoNote}>
+            <ThemedText>{note}</ThemedText>
+          </View>
+        )}
         <FlatList
           style={{ flex: 1, marginBottom: 100 }}
           data={sortedHabits}
@@ -270,6 +289,13 @@ const styles = StyleSheet.create({
   headerContent: {
     paddingTop: 16,
     paddingHorizontal: 16,
+  },
+  infoNote: {
+    padding: 16,
+    backgroundColor: "lightblue",
+    borderRadius: 8,
+    marginBottom: 16,
+    marginHorizontal: 16,
   },
   subtitle: {
     marginBottom: 16,
