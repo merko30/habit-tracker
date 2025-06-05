@@ -117,5 +117,56 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
     );
   });
 
+  // get completions for current week and month for a habit
+  // week:[], month:[]
+  router.get("/stats/:habitId", authMiddleware, (req, res) => {
+    const habitId = Number(req.params.habitId);
+
+    if (isNaN(habitId)) {
+      res.status(400).json({ error: "Invalid habit ID" });
+      return;
+    }
+    const userId = (req as any).userId;
+    db.serialize(() => {
+      // Get weekly completions
+      db.all(
+        `SELECT date, completed FROM habit_completions 
+         WHERE habit_id = ? AND date >= date('now', 'weekday 0', '-6 days') 
+         ORDER BY date`,
+        [habitId],
+        (err, weekRows: HabitCompletion[]) => {
+          if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+          }
+
+          // Get monthly completions
+          db.all(
+            `SELECT date, completed FROM habit_completions 
+             WHERE habit_id = ? AND date >= date('now', 'start of month') 
+             ORDER BY date`,
+            [habitId],
+            (err, monthRows: HabitCompletion[]) => {
+              if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+              }
+
+              const weekData = weekRows.map((row) => ({
+                date: row.date,
+                completed: Boolean(row.completed),
+              }));
+              const monthData = monthRows.map((row) => ({
+                date: row.date,
+                completed: Boolean(row.completed),
+              }));
+
+              res.json({ week: weekData, month: monthData });
+            }
+          );
+        }
+      );
+    });
+  });
   return router;
 }

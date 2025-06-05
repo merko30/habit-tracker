@@ -10,14 +10,8 @@ export async function getCompletions() {
     });
 }
 
-export async function getCompletion(id: number) {
-  return axios
-    .get(`/completions/${id}`)
-    .then((res) => res.data)
-    .catch((err) => {
-      console.error("Failed to fetch completion:", err);
-      throw new Error("Failed to fetch completion");
-    });
+export async function getWeeklyAndMonthlyStats(id: string) {
+  return axios.get(`/completions/stats/${id}`).then((res) => res.data);
 }
 
 export async function createCompletion(data: {

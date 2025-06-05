@@ -8,8 +8,12 @@ import {
   ScrollView,
   Dimensions,
 } from "react-native";
+import { useEffect, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
+
 import { ThemedText } from "@/components/ThemedText";
+import { getWeeklyAndMonthlyStats } from "@/api/completions";
 
 const mockWeekly = [true, false, true, true, false, true, true];
 const mockMonthly = [
@@ -90,6 +94,32 @@ function PreviewRow({ data, style }: { data: boolean[]; style?: object }) {
 }
 
 export default function HabitStatsScreen() {
+  const { id } = useLocalSearchParams();
+
+  const [data, setData] = useState({
+    week: [],
+    month: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getWeeklyAndMonthlyStats(id as string);
+        setData(data);
+        console.log(data);
+      } catch (error) {
+        console.log(error);
+        setError("Failed to load data");
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, [id]);
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView style={styles.scrollContainer}>
