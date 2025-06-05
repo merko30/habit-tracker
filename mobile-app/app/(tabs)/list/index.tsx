@@ -262,13 +262,13 @@ export default function HomeScreen() {
     [habits]
   );
 
+  const name = useMemo(() => user?.display_name || user?.username, [user]);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={{ flex: 1 }}>
         <View style={styles.headerContent}>
-          <ThemedText type="title">
-            Hello, {user?.display_name || user?.username}
-          </ThemedText>
+          <ThemedText type="title">Hello, {name}</ThemedText>
           <ThemedText type="subtitle" style={styles.subtitle}>
             Your Habits
           </ThemedText>

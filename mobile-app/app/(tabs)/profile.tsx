@@ -23,7 +23,11 @@ export default function Profile() {
     timeZone: "",
   });
 
-  const { logOut: onLogout, user: loggedInUser } = useAuth();
+  const {
+    logOut: onLogout,
+    user: loggedInUser,
+    setUser: setLoggedInUser,
+  } = useAuth();
 
   useEffect(() => {
     setUser({
@@ -39,6 +43,16 @@ export default function Profile() {
         name: user.name,
         age: user.age,
         timeZone: user.timeZone,
+      });
+      // Update the logged-in user state
+      setLoggedInUser!({
+        id: loggedInUser?.id ?? "",
+        name: user.name, // always set name
+        email: loggedInUser?.email ?? "",
+        username: loggedInUser?.username ?? "",
+        display_name: user.name,
+        age: user.age,
+        timezone: user.timeZone,
       });
       Toast.show({
         type: "success",

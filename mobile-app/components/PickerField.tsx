@@ -28,7 +28,7 @@ const PickerField = ({
       selectedValue={value}
       onValueChange={onChange}
       style={styles.picker}
-      itemStyle={{ height: 130 }}
+      itemStyle={{ height: 130, borderRadius: 8 }}
     >
       {options.map((option) => (
         <Picker.Item

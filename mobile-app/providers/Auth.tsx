@@ -8,6 +8,7 @@ export interface IAuthContext {
   setLoggedIn?: (value: boolean) => void;
   logOut: () => void;
   user: IUser | null;
+  setUser?: (user: IUser) => void;
 }
 
 export interface IUser {
@@ -26,6 +27,8 @@ export const AuthContext = createContext<IAuthContext>({
   loading: false,
   user: null,
   logOut: () => {},
+  setLoggedIn: () => {},
+  setUser: () => {},
 });
 
 export const useAuth = () => {
@@ -37,10 +40,12 @@ export const useAuth = () => {
 };
 
 const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [state, setState] = useState({
+  const [state, setState] = useState<IAuthContext>({
     loggedIn: false,
     loading: true,
     user: null,
+    logOut: () => {},
+    setLoggedIn: () => {},
   });
 
   useEffect(() => {
@@ -75,6 +80,7 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       user: state.user,
       setLoggedIn: (value: boolean) =>
         setState((prev) => ({ ...prev, loggedIn: value })),
+      setUser: (user: IUser) => setState((prev) => ({ ...prev, user })),
       logOut,
     };
   }, [state.loggedIn, state.loading, state.user]);
