@@ -61,6 +61,7 @@ const syncPendingCompletions = async () => {
 
 type DeletedHabit = Habit & {
   deleted?: boolean;
+  updated?: boolean; // to track if it was updated locally
 };
 
 export default function HomeScreen() {
@@ -115,7 +116,6 @@ export default function HomeScreen() {
       const habitsFromStorageRaw = await AsyncStorage.getItem(
         HABITS_STORAGE_KEY
       );
-      const habitsFromDatabase = await getHabits();
       const { createHabit, updateHabit, deleteHabit } = await import(
         "@/api/habits"
       );
@@ -123,9 +123,6 @@ export default function HomeScreen() {
       let localHabits: DeletedHabit[] = habitsFromStorageRaw
         ? JSON.parse(habitsFromStorageRaw)
         : [];
-
-      const localMap = new Map(localHabits.map((h) => [h.id, h]));
-      const serverMap = new Map(habitsFromDatabase.map((h) => [h.id, h]));
 
       // check "deleted" field in local habits
       const habitsToDelete = localHabits.filter((h) => !h.deleted);
@@ -139,6 +136,25 @@ export default function HomeScreen() {
           } catch (err) {
             console.warn(`Failed to delete habit: ${habit.title}`, err);
           }
+        }
+      }
+
+      const habitsToUpdate = localHabits.filter((h) => h.updated && !h.deleted);
+
+      // Step 1: UPDATE habits that are marked as updated
+      for (const habit of habitsToUpdate) {
+        try {
+          const updatedHabit = await updateHabit(habit.id, {
+            title: habit.title,
+            frequency: habit.frequency,
+            tags: habit.tags || [],
+          });
+          // Update local habits array with the updated habit
+          localHabits = localHabits.map((h) =>
+            h.id === updatedHabit.id ? updatedHabit : h
+          );
+        } catch (err) {
+          console.warn(`Failed to update habit: ${habit.title}`, err);
         }
       }
 

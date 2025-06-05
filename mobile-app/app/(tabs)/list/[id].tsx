@@ -58,7 +58,17 @@ export default function HabitEditScreen() {
   }, [id]);
 
   const saveToAsyncStorage = async (habit: Partial<Habit>) => {
-    // update after edit
+    const existingRaw = await AsyncStorage.getItem("habits");
+    const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+    await AsyncStorage.setItem(
+      "habits",
+      JSON.stringify(
+        localHabits.map((h) =>
+          h.id === habit.id ? { ...habit, updated: true } : h
+        )
+      )
+    );
   };
 
   const saveToApi = async (habit: Partial<Habit>) => {
@@ -80,15 +90,9 @@ export default function HabitEditScreen() {
     }
     try {
       const newHabit = await saveToApi(habit);
-      const existingRaw = await AsyncStorage.getItem("habits");
-      const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
 
-      await AsyncStorage.setItem(
-        "habits",
-        JSON.stringify(
-          localHabits.map((h) => (h.id === newHabit.id ? newHabit : h))
-        )
-      );
+      await saveToAsyncStorage(newHabit);
+
       Toast.show({
         type: "success",
         text1: "Habit saved successfully!",

@@ -59,9 +59,16 @@ export const useCalculateRisk = () => {
           weekday: "long",
         });
 
-        console.log(riskByDay[today]);
-
-        if (riskByDay[today] && riskByDay[today] >= 0.5) {
+        if (
+          riskByDay[today] &&
+          riskByDay[today] >= 0.5 &&
+          completions.find(
+            (c: HabitCompletion) =>
+              new Date(c.date).toLocaleDateString("en-US", {
+                weekday: "long",
+              }) === today && !c.completed
+          )
+        ) {
           setNote(
             RISK_NOTE_MAP[today as keyof typeof RISK_NOTE_MAP] ||
               "High risk day detected. Stay focused!"
