@@ -26,8 +26,8 @@ import { Colors } from "@/constants/Colors";
 import { Habit } from "@/types";
 import { createCompletion } from "@/api/completions";
 
-import { ThemedText } from "./ThemedText";
-import { ThemedView } from "./ThemedView";
+import { ThemedText } from "../ThemedText";
+import { ThemedView } from "../ThemedView";
 import { deleteHabit } from "@/api/habits";
 import { HABITS_STORAGE_KEY } from "@/constants";
 
@@ -40,7 +40,7 @@ import {
   ICONS_WIDTH,
   HEIGHT,
   PendingCompletion,
-} from "./HabitItem/utils";
+} from "./utils";
 
 const { width: wWidth } = Dimensions.get("window");
 
