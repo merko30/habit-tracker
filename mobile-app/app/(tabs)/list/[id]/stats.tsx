@@ -14,89 +14,152 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 
 import { ThemedText } from "@/components/ThemedText";
 import { getWeeklyAndMonthlyStats } from "@/api/completions";
+import { HabitCompletion } from "@/types";
+import { Colors } from "@/constants/Colors";
 
-const mockWeekly = [true, false, true, true, false, true, true];
-const mockMonthly = [
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  true,
-  false,
-  true,
-  false,
-  true,
-  true,
-  false,
-];
+function getDaysInMonth(year: number, month: number) {
+  return new Date(year, month + 1, 0).getDate();
+}
 
-function PreviewRow({ data, style }: { data: boolean[]; style?: object }) {
+function pad2(n: number) {
+  return n < 10 ? `0${n}` : `${n}`;
+}
+
+function getCurrentWeekDates() {
+  const now = new Date();
+  const dayOfWeek = (now.getDay() + 6) % 7; // 0 (Mon) - 6 (Sun)
+  const week: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now);
+    d.setDate(now.getDate() - dayOfWeek + i);
+    const year = d.getFullYear();
+    const month = pad2(d.getMonth() + 1);
+    const day = pad2(d.getDate());
+    week.push(`${year}-${month}-${day}`);
+  }
+  return week;
+}
+
+function getCurrentMonthDates() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const days = getDaysInMonth(year, month);
+  const dates: string[] = [];
+  for (let i = 1; i <= days; i++) {
+    const m = pad2(month + 1);
+    const d = pad2(i);
+    dates.push(`${year}-${m}-${d}`);
+  }
+  return dates;
+}
+
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function PreviewRow({
+  dates,
+  completions,
+  style,
+}: {
+  dates: string[];
+  completions: HabitCompletion[];
+  style?: object;
+}) {
   const screenWidth = Dimensions.get("window").width;
   const padding = 16 * 2; // match scrollContainer padding
   const gap = 8;
   const itemCount = 7;
   const itemSize = (screenWidth - padding - gap * (itemCount - 1)) / itemCount;
-  // Split data into rows of 7
+  // Split dates into rows of 7
   const rows = [];
-  for (let i = 0; i < data.length; i += 7) {
-    rows.push(data.slice(i, i + 7));
+  for (let i = 0; i < dates.length; i += 7) {
+    rows.push(dates.slice(i, i + 7));
   }
   return (
     <View style={[styles.previewContainer, style]}>
       {rows.map((row, rowIdx) => (
         <View key={rowIdx} style={[styles.previewRow, { gap }]}>
-          {row.map((checked, idx) => (
-            <View
-              key={idx}
-              style={[
-                styles.previewCircle,
-                {
-                  width: itemSize,
-                  height: itemSize,
-                  borderRadius: itemSize / 2,
-                  backgroundColor: checked ? "#4caf50" : "#eee",
-                },
-              ]}
-            >
-              {checked ? (
-                <MaterialIcons name="check" size={24} color="#fff" />
-              ) : (
-                <MaterialIcons
-                  name="radio-button-unchecked"
-                  size={itemSize + 3}
-                  color="#bbb"
-                />
-              )}
-            </View>
-          ))}
+          {row.map((date, idx) => {
+            const checked = completions.some(
+              (c) => c.date === date && c.completed
+            );
+            return (
+              <View
+                key={idx}
+                style={[
+                  styles.previewCircle,
+                  {
+                    width: itemSize,
+                    height: itemSize,
+                    borderRadius: itemSize / 2,
+                    backgroundColor: Colors.light.tint,
+                  },
+                ]}
+              >
+                <ThemedText
+                  style={{
+                    color: "#fff",
+                    fontSize: 12,
+                    fontWeight: "bold",
+                  }}
+                >
+                  {
+                    date.split("-")[2] // Extract day from date
+                  }
+                </ThemedText>
+                {checked && (
+                  <View
+                    style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: 10,
+                      position: "absolute",
+                      bottom: -5,
+                      right: -5,
+                      backgroundColor: "#fff",
+                      justifyContent: "center",
+                      alignItems: "center",
+                    }}
+                  >
+                    <MaterialIcons
+                      name="check"
+                      size={16}
+                      color={Colors.light.tint}
+                    />
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
       ))}
     </View>
   );
 }
 
+const PeriodInfo = ({ isMonth }: { isMonth: boolean }) => (
+  <View>
+    <ThemedText>
+      {isMonth
+        ? new Date().toLocaleString("default", { month: "long" })
+        : "This Week"}
+    </ThemedText>
+    <View style={styles.datesRow}>
+      {DAY_NAMES.map((name, idx) => (
+        <ThemedText key={idx} style={styles.dateLabel}>
+          {name}
+        </ThemedText>
+      ))}
+    </View>
+  </View>
+);
+
 export default function HabitStatsScreen() {
   const { id } = useLocalSearchParams();
-
-  const [data, setData] = useState({
+  const [data, setData] = useState<{
+    week: HabitCompletion[];
+    month: HabitCompletion[];
+  }>({
     week: [],
     month: [],
   });
@@ -110,15 +173,16 @@ export default function HabitStatsScreen() {
       try {
         const data = await getWeeklyAndMonthlyStats(id as string);
         setData(data);
-        console.log(data);
       } catch (error) {
-        console.log(error);
         setError("Failed to load data");
       }
       setLoading(false);
     };
     fetchData();
   }, [id]);
+
+  const weekDates = getCurrentWeekDates();
+  const monthDates = getCurrentMonthDates();
 
   return (
     <SafeAreaView style={styles.container}>
@@ -128,9 +192,15 @@ export default function HabitStatsScreen() {
         </ThemedText>
         <View>
           <Text style={styles.title}>Weekly Preview</Text>
-          <PreviewRow data={mockWeekly} style={{ marginBottom: 32 }} />
+          <PeriodInfo isMonth={false} />
+          <PreviewRow
+            dates={weekDates}
+            completions={data.week}
+            style={{ marginBottom: 32 }}
+          />
           <Text style={styles.title}>Monthly Preview</Text>
-          <PreviewRow data={mockMonthly} />
+          <PeriodInfo isMonth />
+          <PreviewRow dates={monthDates} completions={data.month} />
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -159,7 +229,24 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   previewCircle: {
+    position: "relative",
     alignItems: "center",
     justifyContent: "center",
+  },
+  dayNamesContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  datesRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+  },
+  dateLabel: {
+    flex: 1,
+    textAlign: "center",
+    fontWeight: "500",
+    color: "#666",
   },
 });

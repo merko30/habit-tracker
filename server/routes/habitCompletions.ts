@@ -121,46 +121,52 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
   // week:[], month:[]
   router.get("/stats/:habitId", authMiddleware, (req, res) => {
     const habitId = Number(req.params.habitId);
-
     if (isNaN(habitId)) {
       res.status(400).json({ error: "Invalid habit ID" });
       return;
     }
     const userId = (req as any).userId;
+    // Get current date
+    const now = new Date();
+    // Get Monday of current week
+    const dayOfWeek = (now.getDay() + 6) % 7; // 0 (Mon) - 6 (Sun)
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - dayOfWeek);
+    const mondayStr = monday.toISOString().slice(0, 10);
+    // Get first day of current month
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10);
     db.serialize(() => {
-      // Get weekly completions
+      // Get weekly completions (from Monday)
       db.all(
         `SELECT date, completed FROM habit_completions 
-         WHERE habit_id = ? AND date >= date('now', 'weekday 0', '-6 days') 
+         WHERE habit_id = ? AND date >= ? 
          ORDER BY date`,
-        [habitId],
-        (err, weekRows: HabitCompletion[]) => {
+        [habitId, mondayStr],
+        (err, weekRows) => {
           if (err) {
             res.status(500).json({ error: err.message });
             return;
           }
-
-          // Get monthly completions
+          // Get monthly completions (from 1st of month)
           db.all(
             `SELECT date, completed FROM habit_completions 
-             WHERE habit_id = ? AND date >= date('now', 'start of month') 
+             WHERE habit_id = ? AND date >= ? 
              ORDER BY date`,
-            [habitId],
-            (err, monthRows: HabitCompletion[]) => {
+            [habitId, firstOfMonthStr],
+            (err, monthRows) => {
               if (err) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-
-              const weekData = weekRows.map((row) => ({
+              const weekData = (weekRows as any[]).map((row) => ({
                 date: row.date,
                 completed: Boolean(row.completed),
               }));
-              const monthData = monthRows.map((row) => ({
+              const monthData = (monthRows as any[]).map((row) => ({
                 date: row.date,
                 completed: Boolean(row.completed),
               }));
-
               res.json({ week: weekData, month: monthData });
             }
           );
