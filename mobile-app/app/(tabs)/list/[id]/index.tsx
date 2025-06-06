@@ -39,24 +39,22 @@ export default function HabitEditScreen() {
             frequency: habit.frequency,
             tags: habit.tags || [],
           });
-        } else {
-          // locally find
-          const existingRaw = await AsyncStorage.getItem("habits");
-          const localHabits: Habit[] = existingRaw
-            ? JSON.parse(existingRaw)
-            : [];
-          const localHabit = localHabits.find((h) => h.id === id);
-          if (localHabit) {
-            setHabit({
-              title: localHabit.title,
-              frequency: localHabit.frequency,
-              tags: localHabit.tags || [],
-            });
-          }
         }
       } catch (error) {
-        console.error("Failed to load habit from storage:", error);
+        // locally find
+        const existingRaw = await AsyncStorage.getItem("habits");
+        const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
+        const localHabit = localHabits.find((h) => h.id === id);
+
+        if (localHabit) {
+          setHabit({
+            title: localHabit.title,
+            frequency: localHabit.frequency,
+            tags: localHabit.tags || [],
+          });
+        }
       }
+      // console.error("Failed to load habit from storage:", error);
     };
 
     fetchHabit();

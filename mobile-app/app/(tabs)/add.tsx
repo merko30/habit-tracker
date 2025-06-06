@@ -86,6 +86,7 @@ export default function AddScreen() {
     } catch (error) {
       console.log(error);
       await saveToAsyncStorage(habit);
+      setHabit(initialValues);
       router.navigate(`/list?refresh=${Date.now()}`);
     }
   };
