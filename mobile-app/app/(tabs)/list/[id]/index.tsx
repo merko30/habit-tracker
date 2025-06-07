@@ -19,10 +19,11 @@ import { getHabit, updateHabit } from "@/api/habits";
 import { Habit } from "@/types";
 import { initialValues } from "@/utils";
 import { Colors } from "@/constants/Colors";
+import { HABITS_STORAGE_KEY } from "@/constants";
 
 export default function HabitEditScreen() {
   const { id: idRaw } = useLocalSearchParams<{ id: string }>();
-  const id = Number(idRaw);
+  const id = idRaw; // treat id as string
 
   const [habit, setHabit] = useState<Partial<Habit>>(initialValues);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export default function HabitEditScreen() {
     const fetchHabit = async () => {
       try {
         // load from api first
-        const habit = await getHabit(id);
+        const habit = await getHabit(parseInt(id));
         if (habit) {
           setHabit({
             title: habit.title,
@@ -42,9 +43,11 @@ export default function HabitEditScreen() {
         }
       } catch (error) {
         // locally find
-        const existingRaw = await AsyncStorage.getItem("habits");
+        const existingRaw = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
         const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
-        const localHabit = localHabits.find((h) => h.id === id);
+        const localHabit = localHabits.find((h) => String(h.id) === String(id));
+
+        console.log(localHabit);
 
         if (localHabit) {
           setHabit({
@@ -59,14 +62,14 @@ export default function HabitEditScreen() {
   }, [id]);
 
   const saveToAsyncStorage = async (habit: Partial<Habit>) => {
-    const existingRaw = await AsyncStorage.getItem("habits");
+    const existingRaw = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
     const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
 
     await AsyncStorage.setItem(
-      "habits",
+      HABITS_STORAGE_KEY,
       JSON.stringify(
         localHabits.map((h) =>
-          h.id === habit.id ? { ...habit, updated: true } : h
+          String(h.id) === String(habit.id) ? { ...habit, updated: true } : h
         )
       )
     );
@@ -74,7 +77,7 @@ export default function HabitEditScreen() {
 
   const saveToApi = async (habit: Partial<Habit>) => {
     try {
-      const data = await updateHabit(id, habit);
+      const data = await updateHabit(parseInt(id), habit);
       console.log("Habit updated successfully:", data);
       return data;
     } catch (error) {
@@ -89,6 +92,19 @@ export default function HabitEditScreen() {
       setError("Please enter the habit title and select at least one tag.");
       return;
     }
+    // Duplicate title validation (exclude current habit)
+    const existingRaw = await AsyncStorage.getItem("habits");
+    const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
+    const normalize = (str: string) => str.trim().toLowerCase();
+    const duplicate = localHabits.some(
+      (h) =>
+        normalize(h.title) === normalize(habit.title!) &&
+        String(h.id) !== String(id)
+    );
+    if (duplicate) {
+      setError("A habit with this title already exists.");
+      return;
+    }
     try {
       const newHabit = await saveToApi(habit);
       await saveToAsyncStorage(newHabit);
@@ -98,12 +114,18 @@ export default function HabitEditScreen() {
         position: "bottom",
         visibilityTime: 2000,
       });
-      router.push("/list?refresh=" + Date.now());
+      router.push({
+        pathname: "/list",
+        params: { refresh: Date.now().toString() },
+      });
     } catch (error) {
       console.log(error);
       // Mark as updated if offline
-      await saveToAsyncStorage({ ...habit, id, updated: true });
-      router.push("/list?refresh=" + Date.now());
+      await saveToAsyncStorage({ ...habit, id: id, updated: true });
+      router.push({
+        pathname: "/list",
+        params: { refresh: Date.now().toString() },
+      });
     }
   };
 
@@ -118,19 +140,21 @@ export default function HabitEditScreen() {
           description="Make changes to your habit"
           onSave={onSave}
         />
-        <Pressable
-          onPress={() =>
-            router.push({ pathname: "/list/[id]/stats", params: { id } })
-          }
-          style={[
-            styles.link,
-            {
-              backgroundColor: Colors.light.tint,
-            },
-          ]}
-        >
-          <Text style={{ color: "#fff", fontWeight: "600" }}>Statistics</Text>
-        </Pressable>
+        {!id.toString().includes("offline") && (
+          <Pressable
+            onPress={() =>
+              router.push({ pathname: "/list/[id]/stats", params: { id } })
+            }
+            style={[
+              styles.link,
+              {
+                backgroundColor: Colors.light.tint,
+              },
+            ]}
+          >
+            <Text style={{ color: "#fff", fontWeight: "600" }}>Statistics</Text>
+          </Pressable>
+        )}
         <HabitForm value={habit} onChange={setHabit} error={error} />
       </ScrollView>
     </SafeAreaView>

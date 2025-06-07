@@ -21,10 +21,14 @@ export default function AddScreen() {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
+  const resetAndNavigate = () => {
+    setHabit(initialValues);
+    router.navigate(`/list?refresh=${Date.now()}`);
+  };
+
   const saveToAsyncStorage = async (habit: Partial<Habit>) => {
     try {
       const existingHabits = await AsyncStorage.getItem("habits");
-
       const habits = existingHabits ? JSON.parse(existingHabits) : [];
       const newHabit = {
         ...habit,
@@ -32,18 +36,11 @@ export default function AddScreen() {
         completed_today: false,
         ...(!habit.id
           ? {
-              id: `offline-${Date.now()}`, // Temporary ID for offline habits
+              id: `offline-${Date.now()}`,
               created_at: new Date().toISOString(),
             }
           : {}),
       };
-      const habitExists = habits.some(
-        (h: Habit) => normalize(h.title) === normalize(newHabit.title!)
-      );
-      if (habitExists) {
-        setError("A habit with this title already exists.");
-        return;
-      }
       habits.push(newHabit);
       await AsyncStorage.setItem("habits", JSON.stringify(habits));
       return newHabit;
@@ -73,6 +70,16 @@ export default function AddScreen() {
       return;
     }
     try {
+      // Check for duplicate title offline before saving
+      const existingHabits = await AsyncStorage.getItem("habits");
+      const habits = existingHabits ? JSON.parse(existingHabits) : [];
+      const habitExists = habits.some(
+        (h: Habit) => normalize(h.title) === normalize(habit.title)
+      );
+      if (habitExists) {
+        setError("A habit with this title already exists.");
+        return;
+      }
       const newHabit = await saveToApi(habit);
       await saveToAsyncStorage(newHabit ?? habit);
       Toast.show({
@@ -81,10 +88,10 @@ export default function AddScreen() {
         position: "bottom",
         visibilityTime: 2000,
       });
-      setHabit(initialValues);
-      router.navigate(`/list?refresh=${Date.now()}`);
+      resetAndNavigate();
     } catch (error) {
       console.log(error);
+      // Only check for duplicate again if not already checked
       await saveToAsyncStorage(habit);
       setHabit(initialValues);
       router.navigate(`/list?refresh=${Date.now()}`);
