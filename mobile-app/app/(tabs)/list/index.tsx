@@ -284,7 +284,16 @@ export default function HomeScreen() {
           decelerationRate={"normal"}
           ListEmptyComponent={
             loading ? (
-              <ThemedText>Loading habits...</ThemedText>
+              <ThemedView style={styles.placeholder}>
+                <MaterialIcons
+                  name="hourglass-empty"
+                  size={48}
+                  color="lightgray"
+                />
+                <ThemedText type="subtitle" style={styles.placeholderText}>
+                  Loading habits...
+                </ThemedText>
+              </ThemedView>
             ) : (
               <ThemedView style={styles.placeholder}>
                 <MaterialIcons name="search" size={48} color="lightgray" />
