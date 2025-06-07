@@ -35,7 +35,7 @@ export default function Profile() {
     }
     setUser({
       name: loggedInUser?.display_name ?? "",
-      age: loggedInUser?.age,
+      age: loggedInUser?.age ?? 0,
       timeZone: loggedInUser?.timezone ?? "Etc/GMT",
     });
   }, [loggedInUser]);

@@ -118,10 +118,16 @@ export default function HabitEditScreen() {
         pathname: "/list",
         params: { refresh: Date.now().toString() },
       });
-    } catch (error) {
-      console.log(error);
+    } catch {
       // Mark as updated if offline
-      await saveToAsyncStorage({ ...habit, id: id, updated: true });
+      await saveToAsyncStorage({ ...habit, id: parseInt(id), updated: true });
+      Toast.show({
+        type: "info",
+        text1: "Saved offline",
+        text2: "Your changes will sync when you are online.",
+        position: "bottom",
+        visibilityTime: 2000,
+      });
       router.push({
         pathname: "/list",
         params: { refresh: Date.now().toString() },
