@@ -17,14 +17,14 @@ import HabitForm from "@/components/HabitForm";
 import SaveHeader from "@/components/SaveHeader";
 import { getHabit, updateHabit } from "@/api/habits";
 import { Habit } from "@/types";
-import { HabitFormValues, initialValues } from "@/utils";
+import { initialValues } from "@/utils";
 import { Colors } from "@/constants/Colors";
 
 export default function HabitEditScreen() {
   const { id: idRaw } = useLocalSearchParams<{ id: string }>();
   const id = Number(idRaw);
 
-  const [habit, setHabit] = useState<HabitFormValues>(initialValues);
+  const [habit, setHabit] = useState<Partial<Habit>>(initialValues);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
@@ -48,9 +48,7 @@ export default function HabitEditScreen() {
 
         if (localHabit) {
           setHabit({
-            title: localHabit.title,
-            frequency: localHabit.frequency,
-            tags: localHabit.tags || [],
+            ...localHabit,
           });
         }
       }
@@ -87,7 +85,7 @@ export default function HabitEditScreen() {
 
   const onSave = async () => {
     setError(null);
-    if (!habit.title.trim().length || habit.tags.length === 0) {
+    if (!habit.title!.trim().length || habit.tags!.length === 0) {
       setError("Please enter the habit title and select at least one tag.");
       return;
     }

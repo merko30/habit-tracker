@@ -53,14 +53,29 @@ const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       const token = await AsyncStorage.getItem("token");
 
       if (token) {
-        const user = await getUserProfile();
-        setState((prev) => ({
-          ...prev,
-          loggedIn: true,
-          loading: false,
-          user,
-        }));
+        try {
+          const user = await getUserProfile();
+          setState((prev) => ({
+            ...prev,
+            loggedIn: true,
+            loading: false,
+            user,
+          }));
+        } catch (error) {
+          await AsyncStorage.removeItem("token");
+          setState((prev) => ({
+            ...prev,
+            loggedIn: false,
+            loading: false,
+            user: null,
+          }));
+        }
       }
+
+      setState((prev) => ({
+        ...prev,
+        loading: false,
+      }));
     })();
   }, []);
 

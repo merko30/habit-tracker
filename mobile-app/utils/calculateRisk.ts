@@ -1,6 +1,8 @@
+import { useEffect, useState } from "react";
+import NetInfo from "@react-native-community/netinfo";
+
 import { getCompletions } from "@/api/completions";
 import { HabitCompletion } from "@/types";
-import { useEffect, useState } from "react";
 
 export default function calculateHabitRisk(completions: HabitCompletion[]) {
   const completionsByDay: Record<string, { total: number; missed: number }> = {
@@ -50,6 +52,12 @@ export const useCalculateRisk = () => {
 
   useEffect(() => {
     const loadAndCalculateRisk = async () => {
+      const netInfo = await NetInfo.fetch();
+
+      if (!netInfo.isConnected) {
+        return;
+      }
+
       try {
         const completions = await getCompletions();
         const riskByDay = calculateHabitRisk(completions);

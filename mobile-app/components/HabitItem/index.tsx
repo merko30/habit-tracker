@@ -62,7 +62,9 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
       const localHabits = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
       if (localHabits) {
         const habits = JSON.parse(localHabits);
-        const updatedHabits = habits.filter((h: Habit) => h.id !== habit.id);
+        const updatedHabits = habits.map((h: Habit) =>
+          h.id === habit.id ? { ...h, deleted: true } : h
+        );
         console.log("Updated habits after deletion:", updatedHabits);
 
         await AsyncStorage.setItem(
@@ -209,9 +211,17 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
               }
             />
             <Link href={{ pathname: "/list/[id]", params: { id: habit.id } }}>
-              <View>
+              <View
+                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+              >
                 <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
-                <ThemedText>{habit.id}</ThemedText>
+                {(habit.updated || habit.id.toString().includes("offline")) && (
+                  <MaterialIcons
+                    name="sync"
+                    size={16}
+                    color={Colors[colorScheme ?? "light"].text}
+                  />
+                )}
               </View>
             </Link>
           </ThemedView>

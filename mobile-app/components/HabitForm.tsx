@@ -5,9 +5,10 @@ import Field from "./Field";
 import PickerField from "./PickerField";
 import { Colors } from "@/constants/Colors";
 import { FREQUENCIES, HabitFormValues, TAGS } from "@/utils";
+import { Habit } from "@/types";
 
 interface HabitFormProps {
-  value: HabitFormValues;
+  value: Partial<Habit>;
   onChange: (val: HabitFormValues) => void;
   error?: string | null;
 }
@@ -16,10 +17,10 @@ export default function HabitForm({ value, onChange, error }: HabitFormProps) {
   const colorScheme = useColorScheme();
 
   const onToggleTag = (tag: string) => {
-    const tags = value.tags.includes(tag)
-      ? value.tags.filter((t) => t !== tag)
-      : [...value.tags, tag];
-    onChange({ ...value, tags });
+    const tags = value.tags!.includes(tag)
+      ? value.tags!.filter((t) => t !== tag)
+      : [...value.tags!, tag];
+    onChange({ ...(value as Habit), tags });
   };
 
   return (
@@ -29,13 +30,13 @@ export default function HabitForm({ value, onChange, error }: HabitFormProps) {
         label="Habit"
         placeholder="e.g., Drink more water"
         value={value.title}
-        onChangeText={(text) => onChange({ ...value, title: text })}
+        onChangeText={(text) => onChange({ ...(value as Habit), title: text })}
       />
       <PickerField
         label="Frequency"
         options={FREQUENCIES}
-        value={value.frequency}
-        onChange={(freq) => onChange({ ...value, frequency: freq })}
+        value={value.frequency!}
+        onChange={(freq) => onChange({ ...(value as Habit), frequency: freq })}
       />
       <ThemedText type="defaultSemiBold">Tags</ThemedText>
       <View style={styles.tagsContainer}>
@@ -45,17 +46,17 @@ export default function HabitForm({ value, onChange, error }: HabitFormProps) {
               style={[
                 styles.tag,
                 {
-                  backgroundColor: value.tags.includes(tag)
+                  backgroundColor: value.tags!.includes(tag)
                     ? Colors[colorScheme ?? "light"].tint
                     : "#fff",
-                  borderColor: value.tags.includes(tag)
+                  borderColor: value.tags!.includes(tag)
                     ? Colors[colorScheme ?? "light"].tint
                     : "#ccc",
                 },
               ]}
             >
               <ThemedText
-                style={{ color: value.tags.includes(tag) ? "#fff" : "#000" }}
+                style={{ color: value.tags!.includes(tag) ? "#fff" : "#000" }}
               >
                 {tag}
               </ThemedText>

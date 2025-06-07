@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
+  Alert,
   FlatList,
   Platform,
   SafeAreaView,
@@ -111,6 +112,7 @@ export default function HomeScreen() {
   const syncHabits = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
+
     try {
       await syncPendingCompletions();
       const habitsFromStorageRaw = await AsyncStorage.getItem(
@@ -125,7 +127,10 @@ export default function HomeScreen() {
         : [];
 
       // check "deleted" field in local habits
-      const habitsToDelete = localHabits.filter((h) => !h.deleted);
+      const habitsToDelete = localHabits.filter((h) => h.deleted);
+
+      console.log("Habits to delete:", habitsToDelete.length);
+
       // Step 1: DELETE habits that are marked as deleted
       for (const habit of habitsToDelete) {
         if (habit.deleted) {
@@ -149,6 +154,7 @@ export default function HomeScreen() {
             frequency: habit.frequency,
             tags: habit.tags || [],
           });
+
           // Update local habits array with the updated habit
           localHabits = localHabits.map((h) =>
             h.id === updatedHabit.id ? updatedHabit : h
@@ -223,12 +229,11 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const checkConnectionAndLoad = async () => {
-      // await loadHabitsFromStorage(); // always show local habits first
-
       const netState = await NetInfo.fetch();
 
       if (netState.isConnected) {
-        loadHabitsFromApi(); // this will overwrite later with synced data
+        syncHabits(); // sync habits if online
+        // loadHabitsFromApi(); // this will overwrite later with synced data
       } else {
         loadHabitsFromStorage(); // load from local storage if offline
       }
@@ -237,6 +242,7 @@ export default function HomeScreen() {
   }, [refresh]);
 
   useEffect(() => {
+    // Set up listener for future changes
     const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected) {
         syncHabits();
@@ -244,21 +250,12 @@ export default function HomeScreen() {
         loadHabitsFromStorage();
       }
     });
+
     return () => unsubscribe();
   }, []);
 
   const sortedHabits = useMemo(
-    () =>
-      habits
-        .slice()
-        .sort((a, b) => {
-          // Prioritize updated habits
-          if (a.updated && !b.updated) return -1;
-          if (!a.updated && b.updated) return 1;
-          // Then sort by created_at
-          return a.created_at.localeCompare(b.created_at);
-        })
-        .filter((habit) => !habit.deleted),
+    () => habits.slice().filter((habit) => !habit.deleted),
     [habits]
   );
 
@@ -279,7 +276,7 @@ export default function HomeScreen() {
           </View>
         )}
         <FlatList
-          style={{ flex: 1, marginBottom: 100 }}
+          style={{ flex: 1 }}
           data={sortedHabits}
           keyExtractor={(item) => item.id.toString()}
           renderItem={({ item }) => <HabitItem habit={item} />}
