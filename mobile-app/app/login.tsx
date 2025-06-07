@@ -12,8 +12,8 @@ import Toast from "react-native-toast-message";
 
 const LoginScreen = () => {
   const [data, setData] = useState({
-    email: "test1@example.com",
-    password: "Password",
+    email: "",
+    password: "",
   });
 
   const { setLoggedIn, setUser } = useAuth();

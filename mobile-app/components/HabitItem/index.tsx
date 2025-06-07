@@ -52,8 +52,6 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
   const [habit, setHabit] = useState<HabitWithCompletionId>(_habit);
   const colorScheme = useColorScheme();
 
-  console.log(habit.todays_completion_id, "Today's completion ID");
-
   const shouldRemove = useSharedValue<0 | 1>(0);
   const position = useSharedValue(INITIAL_POSITION);
 

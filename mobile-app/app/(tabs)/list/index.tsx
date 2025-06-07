@@ -91,24 +91,6 @@ export default function HomeScreen() {
     }
   };
 
-  const loadHabitsFromApi = async () => {
-    try {
-      const habitsFromApi = await getHabits();
-      console.log("Loaded habits from API:", habitsFromApi.length);
-
-      setHabits(habitsFromApi);
-      // await AsyncStorage.setItem(
-      //   HABITS_STORAGE_KEY,
-      //   JSON.stringify(habitsFromApi)
-      // );
-    } catch (e) {
-      console.error("Failed to load habits from API", e);
-      setError("Failed to load habits from API");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const syncHabits = useCallback(async () => {
     if (syncingRef.current) return;
     syncingRef.current = true;
@@ -128,8 +110,6 @@ export default function HomeScreen() {
 
       // check "deleted" field in local habits
       const habitsToDelete = localHabits.filter((h) => h.deleted);
-
-      console.log("Habits to delete:", habitsToDelete.length);
 
       // Step 1: DELETE habits that are marked as deleted
       for (const habit of habitsToDelete) {
