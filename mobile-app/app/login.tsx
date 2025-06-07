@@ -12,11 +12,11 @@ import Toast from "react-native-toast-message";
 
 const LoginScreen = () => {
   const [data, setData] = useState({
-    email: "",
-    password: "",
+    email: "test1@example.com",
+    password: "Password",
   });
 
-  const { setLoggedIn } = useAuth();
+  const { setLoggedIn, setUser } = useAuth();
 
   const router = useRouter();
 
@@ -24,18 +24,20 @@ const LoginScreen = () => {
     try {
       const res = await loginUser(data);
 
-      const { token } = res;
+      const { token, user } = res;
 
       await AsyncStorage.setItem("token", token);
+      setUser!(user);
 
       setLoggedIn!(true);
 
       router.push("/list");
     } catch (error: any) {
-      console.log("Login failed:", error.message);
+      // axios error
+      console.log("Login failed:", error.response.data.error);
       Toast.show({
         type: "error",
-        text1: error.message || "An error occurred during login.",
+        text1: error.response?.data?.error || "An error occurred during login.",
       });
     }
   };

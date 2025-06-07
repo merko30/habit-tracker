@@ -10,9 +10,9 @@ import Toast from "react-native-toast-message";
 
 const RegisterScreen = () => {
   const [data, setData] = useState({
-    username: "merimhas",
-    email: "merim.hasanbegovic@outlook.com",
-    password: "password123",
+    username: "",
+    email: "",
+    password: "",
   });
 
   const router = useRouter();
@@ -26,7 +26,9 @@ const RegisterScreen = () => {
       console.log("Registration failed:", error.message);
       Toast.show({
         type: "error",
-        text1: error.message || "An error occurred during registration.",
+        text1:
+          error.response?.data?.error ||
+          "An error occurred during registration.",
       });
       // Handle registration error (e.g., show a message to the user)
     }

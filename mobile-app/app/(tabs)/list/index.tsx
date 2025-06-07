@@ -259,7 +259,10 @@ export default function HomeScreen() {
     [habits]
   );
 
-  const name = useMemo(() => user?.display_name || user?.username, [user]);
+  const name = useMemo(() => {
+    console.log("user", user);
+    return user?.display_name || user?.username;
+  }, [user]);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -30,10 +30,13 @@ export default function Profile() {
   } = useAuth();
 
   useEffect(() => {
+    if (!loggedInUser) {
+      return;
+    }
     setUser({
-      name: loggedInUser?.display_name || "John Doe",
-      age: loggedInUser?.age || 30,
-      timeZone: loggedInUser?.timezone || "Etc/GMT",
+      name: loggedInUser?.display_name ?? "",
+      age: loggedInUser?.age,
+      timeZone: loggedInUser?.timezone ?? "Etc/GMT",
     });
   }, [loggedInUser]);
 
