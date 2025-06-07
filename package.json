@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix mobile-app install"
+  }
+}
