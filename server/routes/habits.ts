@@ -25,6 +25,9 @@ export default function createHabitsRouter(db: sqlite3.Database) {
         (
           SELECT COUNT(*) FROM habit_completions hc WHERE hc.habit_id = h.id AND hc.completed = 1
         ) AS total_completions,
+        (
+          SELECT id FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
+        ) AS todays_completion_id,
         EXISTS (
           SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
         ) AS completed_today
@@ -63,6 +66,7 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                 streak_count: streak,
                 completed_today: Boolean(habit.completed_today),
                 total_completions: habit.total_completions,
+                todays_completion_id: habit.todays_completion_id || null,
               });
               count--;
               if (count === 0) {
@@ -79,10 +83,25 @@ export default function createHabitsRouter(db: sqlite3.Database) {
   router.get("/:id", (req, res) => {
     const id = validateId(req.params.id, res);
     if (id === null) return;
+    // Get habit and today's completion id
     db.get("SELECT * FROM habits WHERE id = ?", [id], (err, habit) => {
       if (err) return res.status(500).json({ error: err.message });
       if (!habit) return res.status(404).json({ error: "Habit not found" });
-      res.json(habit);
+      // Get today's completion id (if any)
+      db.get(
+        "SELECT id FROM habit_completions WHERE habit_id = ? AND completed = 1 AND date = DATE('now')",
+        [id],
+        (err2, completionRow) => {
+          if (err2) return res.status(500).json({ error: err2.message });
+          res.json({
+            ...habit,
+            todays_completion_id:
+              completionRow && Object.keys(completionRow).length > 0
+                ? (completionRow as any).id
+                : null,
+          });
+        }
+      );
     });
   });
 

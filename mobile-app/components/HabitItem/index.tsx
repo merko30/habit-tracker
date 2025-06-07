@@ -24,7 +24,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { Colors } from "@/constants/Colors";
 import { Habit } from "@/types";
-import { createCompletion } from "@/api/completions";
+import { createCompletion, deleteCompletion } from "@/api/completions";
 
 import { ThemedText } from "../ThemedText";
 import { ThemedView } from "../ThemedView";
@@ -44,9 +44,15 @@ import {
 
 const { width: wWidth } = Dimensions.get("window");
 
-const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
-  const [habit, setHabit] = useState<Habit>(_habit);
+interface HabitWithCompletionId extends Habit {
+  todays_completion_id?: number | null;
+}
+
+const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
+  const [habit, setHabit] = useState<HabitWithCompletionId>(_habit);
   const colorScheme = useColorScheme();
+
+  console.log(habit.todays_completion_id, "Today's completion ID");
 
   const shouldRemove = useSharedValue<0 | 1>(0);
   const position = useSharedValue(INITIAL_POSITION);
@@ -169,7 +175,11 @@ const HabitItem = ({ habit: _habit }: { habit: Habit }) => {
           ? old.streak_count - 1
           : old.streak_count + 1,
       }));
-      await createCompletion(completion);
+      if (habit.completed_today && habit.todays_completion_id) {
+        await deleteCompletion(habit.todays_completion_id);
+      } else {
+        await createCompletion(completion);
+      }
       await syncPendingCompletions();
     } catch {
       await updateStorage(habit);
