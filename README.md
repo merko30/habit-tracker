@@ -10,10 +10,13 @@
 - scan the QR code from the terminal
 
 # Test user
+
 You can either sign up or use the testing user:
-- test@example
+
+- test@example.com
 - password123
 
 # Notes
+
 - to delete a habit, swipe to left
 - to test syncing when online, I had to reload the app, the net info event doesn't work as expected, at least with Expo Go
