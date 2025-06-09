@@ -17,6 +17,8 @@ import { getWeeklyAndMonthlyStats } from "@/api/completions";
 import { HabitCompletion } from "@/types";
 import { Colors } from "@/constants/Colors";
 
+const screenWidth = Dimensions.get("window").width;
+
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
@@ -86,7 +88,6 @@ function PreviewRow({
   style?: object;
   frequency: string;
 }) {
-  const screenWidth = Dimensions.get("window").width;
   const padding = 16 * 2; // match scrollContainer padding
   const gap = 8;
   const itemCount = 7;
@@ -95,14 +96,6 @@ function PreviewRow({
   const rows = [];
   for (let i = 0; i < dates.length; i += 7) {
     rows.push(dates.slice(i, i + 7));
-  }
-
-  // Helper: check if all days in a row are completed (for weekly)
-  function isRowCompleted(row: (string | { date: string })[]) {
-    return row.every((dateObj) => {
-      const date = typeof dateObj === "string" ? dateObj : dateObj.date;
-      return completions.some((c) => c.date === date && c.completed);
-    });
   }
 
   // Helper: get week string for a row (assume all dates in row are in the same week)
@@ -128,7 +121,6 @@ function PreviewRow({
     <View style={[styles.previewContainer, style]}>
       {rows.map((row, rowIdx) => {
         let highlightRow = false;
-        console.log(frequency);
 
         if (frequency === "weekly") {
           const weekStr = getWeekStr(row);
@@ -138,30 +130,34 @@ function PreviewRow({
         } else if (frequency === "monthly") {
           highlightRow = isMonthCompleted();
         }
-        const highlightStyles = highlightRow
-          ? {
-              borderWidth: 2,
-              borderColor: Colors.light.tint,
-              borderRadius: 16,
-              padding: 4,
-              backgroundColor: "#fff",
-            }
-          : {};
+
         return (
           <View
             key={rowIdx}
             style={{
-              marginBottom: 8,
+              // marginBottom: 8,
               position: "relative",
-              ...highlightStyles,
+              // ...highlightStyles,
             }}
           >
+            <View
+              style={{
+                position: "absolute",
+                top: -5,
+                left: -7,
+                height: itemSize + 10,
+                width: screenWidth - padding / 2,
+                borderWidth: 1,
+                borderRadius: 16,
+                borderColor: highlightRow ? Colors.light.tint : "transparent",
+              }}
+            />
             {highlightRow && rowIdx === 0 && (
               <View
                 style={{
                   position: "absolute",
-                  top: 0,
-                  right: 0,
+                  top: -10,
+                  right: -12,
                   zIndex: 2,
                   backgroundColor: "#fff",
                   borderRadius: 12,
@@ -304,7 +300,10 @@ export default function HabitStatsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollContainer}>
+      <ScrollView
+        style={styles.scrollContainer}
+        contentContainerStyle={{ paddingBottom: 48 }}
+      >
         <ThemedText type="title" style={{ marginBottom: 32 }}>
           Statistics
         </ThemedText>
