@@ -86,13 +86,11 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                     res.status(500).json({ error: err.message });
                     return;
                   }
-                  res
-                    .status(200)
-                    .json({
-                      ...row,
-                      completed: Boolean(row.completed),
-                      frequency,
-                    });
+                  res.status(200).json({
+                    ...row,
+                    completed: Boolean(row.completed),
+                    frequency,
+                  });
                 }
               );
             }
@@ -131,9 +129,9 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
       return;
     }
     const userId = (req as any).userId;
-    // Get habit frequency
+    // Get habit info and frequency
     db.get(
-      `SELECT frequency FROM habits WHERE id = ? AND user_id = ?`,
+      `SELECT * FROM habits WHERE id = ? AND user_id = ?`,
       [habitId, userId],
       (err, habit: any) => {
         if (err) {
@@ -150,6 +148,8 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
           // Get current year-week string
           const weekNumber = getWeekNumber(now);
           const weekStr = `${now.getFullYear()}-W${weekNumber}`;
+          // Get current month string
+          const monthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
           db.all(
             `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
             [habitId, weekStr],
@@ -158,32 +158,78 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-              res.json({
-                week: weekRows.map((r: any) => ({
-                  date: r.date,
-                  completed: Boolean(r.completed),
-                })),
-                month: [],
-              });
+              db.all(
+                `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
+                [habitId, monthStr],
+                (err, monthRows: any[]) => {
+                  if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                  }
+                  res.json({
+                    habit: {
+                      id: habit.id,
+                      title: habit.title,
+                      frequency: habit.frequency,
+                      tags: habit.tags ? JSON.parse(habit.tags) : [],
+                      created_at: habit.created_at,
+                    },
+                    week: weekRows.map((r: any) => ({
+                      date: r.date,
+                      completed: Boolean(r.completed),
+                    })),
+                    month: monthRows.map((r: any) => ({
+                      date: r.date,
+                      completed: Boolean(r.completed),
+                    })),
+                  });
+                }
+              );
             }
           );
         } else if (frequency === "monthly") {
+          // For monthly habits, also include week completions for the current week
+          // Get Monday of current week
+          const dayOfWeek = (now.getDay() + 6) % 7; // 0 (Mon) - 6 (Sun)
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - dayOfWeek);
+          const mondayStr = monday.toISOString().slice(0, 10);
           const monthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
           db.all(
-            `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
-            [habitId, monthStr],
-            (err, monthRows: any[]) => {
+            `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date >= ? ORDER BY date`,
+            [habitId, mondayStr],
+            (err, weekRows: any[]) => {
               if (err) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-              res.json({
-                week: [],
-                month: monthRows.map((r: any) => ({
-                  date: r.date,
-                  completed: Boolean(r.completed),
-                })),
-              });
+              db.all(
+                `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
+                [habitId, monthStr],
+                (err, monthRows: any[]) => {
+                  if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                  }
+                  res.json({
+                    habit: {
+                      id: habit.id,
+                      title: habit.title,
+                      frequency: habit.frequency,
+                      tags: habit.tags ? JSON.parse(habit.tags) : [],
+                      created_at: habit.created_at,
+                    },
+                    week: weekRows.map((r: any) => ({
+                      date: r.date,
+                      completed: Boolean(r.completed),
+                    })),
+                    month: monthRows.map((r: any) => ({
+                      date: r.date,
+                      completed: Boolean(r.completed),
+                    })),
+                  });
+                }
+              );
             }
           );
         } else {
@@ -229,7 +275,17 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                       date: row.date,
                       completed: Boolean(row.completed),
                     }));
-                    res.json({ week: weekData, month: monthData });
+                    res.json({
+                      habit: {
+                        id: habit.id,
+                        title: habit.title,
+                        frequency: habit.frequency,
+                        tags: habit.tags ? JSON.parse(habit.tags) : [],
+                        created_at: habit.created_at,
+                      },
+                      week: weekData,
+                      month: monthData,
+                    });
                   }
                 );
               }

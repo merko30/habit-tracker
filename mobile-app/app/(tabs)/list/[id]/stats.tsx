@@ -79,10 +79,12 @@ function PreviewRow({
   dates,
   completions,
   style,
+  frequency,
 }: {
   dates: (string | { date: string; isCurrentMonth?: boolean })[];
   completions: HabitCompletion[];
   style?: object;
+  frequency: string;
 }) {
   const screenWidth = Dimensions.get("window").width;
   const padding = 16 * 2; // match scrollContainer padding
@@ -94,72 +96,151 @@ function PreviewRow({
   for (let i = 0; i < dates.length; i += 7) {
     rows.push(dates.slice(i, i + 7));
   }
+
+  // Helper: check if all days in a row are completed (for weekly)
+  function isRowCompleted(row: (string | { date: string })[]) {
+    return row.every((dateObj) => {
+      const date = typeof dateObj === "string" ? dateObj : dateObj.date;
+      return completions.some((c) => c.date === date && c.completed);
+    });
+  }
+
+  // Helper: get week string for a row (assume all dates in row are in the same week)
+  function getWeekStr(row: (string | { date: string })[]) {
+    const firstDate = typeof row[0] === "string" ? row[0] : row[0].date;
+    const d = new Date(firstDate);
+    const year = d.getFullYear();
+    const jan1 = new Date(year, 0, 1);
+    const weekNumber = Math.ceil(
+      ((d.getTime() - jan1.getTime()) / 86400000 + 1) / 7
+    );
+    return `${year}-W${weekNumber.toString().padStart(2, "0")}`;
+  }
+
+  // Helper: check if the month is completed for monthly habits
+  function isMonthCompleted() {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+    return completions.some((c) => c.date === monthStr && c.completed);
+  }
+
   return (
     <View style={[styles.previewContainer, style]}>
-      {rows.map((row, rowIdx) => (
-        <View key={rowIdx} style={[styles.previewRow, { gap }]}>
-          {row.map((dateObj, idx) => {
-            let date: string;
-            let isCurrentMonth = true;
-            if (typeof dateObj === "string") {
-              date = dateObj;
-            } else {
-              date = dateObj.date;
-              isCurrentMonth = dateObj.isCurrentMonth !== false;
+      {rows.map((row, rowIdx) => {
+        let highlightRow = false;
+        console.log(frequency);
+
+        if (frequency === "weekly") {
+          const weekStr = getWeekStr(row);
+          highlightRow = completions.some(
+            (c) => c.date === weekStr && c.completed
+          );
+        } else if (frequency === "monthly") {
+          highlightRow = isMonthCompleted();
+        }
+        const highlightStyles = highlightRow
+          ? {
+              borderWidth: 2,
+              borderColor: Colors.light.tint,
+              borderRadius: 16,
+              padding: 4,
+              backgroundColor: "#fff",
             }
-            const checked = completions.some(
-              (c) => c.date === date && c.completed
-            );
-            return (
+          : {};
+        return (
+          <View
+            key={rowIdx}
+            style={{
+              marginBottom: 8,
+              position: "relative",
+              ...highlightStyles,
+            }}
+          >
+            {highlightRow && rowIdx === 0 && (
               <View
-                key={idx}
-                style={[
-                  styles.previewCircle,
-                  {
-                    width: itemSize,
-                    height: itemSize,
-                    borderRadius: itemSize / 2,
-                    backgroundColor: isCurrentMonth
-                      ? Colors.light.tint
-                      : "#ccc",
-                  },
-                ]}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  zIndex: 2,
+                  backgroundColor: "#fff",
+                  borderRadius: 12,
+                  padding: 2,
+                }}
               >
-                <ThemedText
-                  style={{
-                    color: isCurrentMonth ? "#fff" : "#888",
-                    fontSize: 12,
-                    fontWeight: "bold",
-                  }}
-                >
-                  {date.split("-")[2]}
-                </ThemedText>
-                {checked && isCurrentMonth && (
-                  <View
-                    style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 10,
-                      position: "absolute",
-                      bottom: -5,
-                      right: -5,
-                      backgroundColor: "#fff",
-                      justifyContent: "center",
-                      alignItems: "center",
-                    }}
-                  >
-                    <MaterialIcons
-                      name="check"
-                      size={16}
-                      color={Colors.light.tint}
-                    />
-                  </View>
-                )}
+                <MaterialIcons
+                  name="check"
+                  size={20}
+                  color={Colors.light.tint}
+                />
               </View>
-            );
-          })}
-        </View>
-      ))}
+            )}
+            <View style={[styles.previewRow, { gap }]}>
+              {row.map((dateObj, idx) => {
+                let date: string;
+                let isCurrentMonth = true;
+                if (typeof dateObj === "string") {
+                  date = dateObj;
+                } else {
+                  date = dateObj.date;
+                  isCurrentMonth = dateObj.isCurrentMonth !== false;
+                }
+                const checked = completions.some(
+                  (c) => c.date === date && c.completed
+                );
+                const showPerDayCheck = frequency === "daily" || !highlightRow;
+                return (
+                  <View
+                    key={idx}
+                    style={[
+                      styles.previewCircle,
+                      {
+                        width: itemSize,
+                        height: itemSize,
+                        borderRadius: itemSize / 2,
+                        backgroundColor: isCurrentMonth
+                          ? Colors.light.tint
+                          : "#ccc",
+                      },
+                    ]}
+                  >
+                    <ThemedText
+                      style={{
+                        color: isCurrentMonth ? "#fff" : "#888",
+                        fontSize: 12,
+                        fontWeight: "bold",
+                      }}
+                    >
+                      {date.split("-")[2]}
+                    </ThemedText>
+                    {checked && isCurrentMonth && showPerDayCheck && (
+                      <View
+                        style={{
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          position: "absolute",
+                          bottom: -5,
+                          right: -5,
+                          backgroundColor: "#fff",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        <MaterialIcons
+                          name="check"
+                          size={16}
+                          color={Colors.light.tint}
+                        />
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        );
+      })}
     </View>
   );
 }
@@ -184,33 +265,42 @@ const PeriodInfo = ({ isMonth }: { isMonth: boolean }) => (
 export default function HabitStatsScreen() {
   const { id } = useLocalSearchParams();
   const [data, setData] = useState<{
+    habit?: any;
     week: HabitCompletion[];
     month: HabitCompletion[];
   }>({
     week: [],
     month: [],
   });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-      setError(null);
       try {
         const data = await getWeeklyAndMonthlyStats(id as string);
         setData(data);
-        console.log(JSON.stringify(data, null, 2));
-      } catch (error) {
-        setError("Failed to load data");
+      } catch {
+        // Optionally handle error
       }
-      setLoading(false);
     };
     fetchData();
   }, [id]);
 
   const weekDates = getCurrentWeekDates();
   const monthDates = getCurrentMonthDates();
+  const frequency = data.habit?.frequency || "daily";
+
+  // Always wrap the current week in the monthly preview, regardless of frequency
+  // Find the row in the monthDates that matches the current week
+  const weekDateSet = new Set(weekDates);
+  const monthRows = [];
+  for (let i = 0; i < monthDates.length; i += 7) {
+    const row = monthDates.slice(i, i + 7);
+    // If this row matches the current week, use week completions instead of month completions
+    const isCurrentWeekRow = row.every((d) =>
+      weekDateSet.has(typeof d === "string" ? d : d.date)
+    );
+    monthRows.push({ row, isCurrentWeekRow });
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -225,10 +315,20 @@ export default function HabitStatsScreen() {
             dates={weekDates}
             completions={data.week}
             style={{ marginBottom: 32 }}
+            frequency={frequency}
           />
           <Text style={styles.title}>Monthly Preview</Text>
           <PeriodInfo isMonth />
-          <PreviewRow dates={monthDates} completions={data.month} />
+          <View style={styles.previewContainer}>
+            {monthRows.map(({ row, isCurrentWeekRow }, idx) => (
+              <PreviewRow
+                key={idx}
+                dates={row}
+                completions={isCurrentWeekRow ? data.week : data.month}
+                frequency={frequency}
+              />
+            ))}
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
