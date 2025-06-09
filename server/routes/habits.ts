@@ -33,10 +33,19 @@ export default function createHabitsRouter(db: sqlite3.Database) {
           let periodDate: string;
           const now = new Date();
           if (habit.frequency === "weekly") {
-            const weekNumber = Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
-            periodDate = `${now.getFullYear()}-W${weekNumber.toString().padStart(2, "0")}`;
+            const weekNumber = Math.ceil(
+              ((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
+                86400000 +
+                1) /
+                7
+            );
+            periodDate = `${now.getFullYear()}-W${weekNumber
+              .toString()
+              .padStart(2, "0")}`;
           } else if (habit.frequency === "monthly") {
-            periodDate = `${now.getFullYear()}-${(now.getMonth() + 1).toString().padStart(2, "0")}`;
+            periodDate = `${now.getFullYear()}-${(now.getMonth() + 1)
+              .toString()
+              .padStart(2, "0")}`;
           } else {
             periodDate = now.toISOString().slice(0, 10);
           }
@@ -71,10 +80,18 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                     // Weekly streak: count consecutive completed weeks
                     const now = new Date();
                     let year = now.getFullYear();
-                    let week = Math.ceil(((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) / 86400000 + 1) / 7);
-                    const completedWeeks = new Set(rows.map(r => r.date));
+                    let week = Math.ceil(
+                      ((now.getTime() -
+                        new Date(now.getFullYear(), 0, 1).getTime()) /
+                        86400000 +
+                        1) /
+                        7
+                    );
+                    const completedWeeks = new Set(rows.map((r) => r.date));
                     while (true) {
-                      const weekStr = `${year}-W${week.toString().padStart(2, "0")}`;
+                      const weekStr = `${year}-W${week
+                        .toString()
+                        .padStart(2, "0")}`;
                       if (completedWeeks.has(weekStr)) {
                         streak++;
                         week--;
@@ -82,7 +99,13 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                           year--;
                           // Get last week number of previous year
                           const lastDay = new Date(year, 11, 31);
-                          week = Math.ceil(((lastDay.getTime() - new Date(year, 0, 1).getTime()) / 86400000 + 1) / 7);
+                          week = Math.ceil(
+                            ((lastDay.getTime() -
+                              new Date(year, 0, 1).getTime()) /
+                              86400000 +
+                              1) /
+                              7
+                          );
                         }
                       } else {
                         break;
@@ -93,9 +116,11 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                     const now = new Date();
                     let year = now.getFullYear();
                     let month = now.getMonth() + 1;
-                    const completedMonths = new Set(rows.map(r => r.date));
+                    const completedMonths = new Set(rows.map((r) => r.date));
                     while (true) {
-                      const monthStr = `${year}-${month.toString().padStart(2, "0")}`;
+                      const monthStr = `${year}-${month
+                        .toString()
+                        .padStart(2, "0")}`;
                       if (completedMonths.has(monthStr)) {
                         streak++;
                         month--;
@@ -112,9 +137,14 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                     ...habit,
                     tags: JSON.parse(habit.tags || "[]"),
                     streak_count: streak,
-                    completed_today: !!(completionRow && (completionRow as any).id !== undefined),
+                    completed_today: !!(
+                      completionRow && (completionRow as any).id !== undefined
+                    ),
                     total_completions: rows.length,
-                    todays_completion_id: completionRow && (completionRow as any).id !== undefined ? (completionRow as any).id : null,
+                    todays_completion_id:
+                      completionRow && (completionRow as any).id !== undefined
+                        ? (completionRow as any).id
+                        : null,
                   });
                   count--;
                   if (count === 0) {

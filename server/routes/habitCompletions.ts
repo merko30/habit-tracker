@@ -86,7 +86,13 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                     res.status(500).json({ error: err.message });
                     return;
                   }
-                  res.status(200).json({ ...row, completed: Boolean(row.completed), frequency });
+                  res
+                    .status(200)
+                    .json({
+                      ...row,
+                      completed: Boolean(row.completed),
+                      frequency,
+                    });
                 }
               );
             }
@@ -152,7 +158,13 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-              res.json({ week: weekRows.map((r: any) => ({ date: r.date, completed: Boolean(r.completed) })), month: [] });
+              res.json({
+                week: weekRows.map((r: any) => ({
+                  date: r.date,
+                  completed: Boolean(r.completed),
+                })),
+                month: [],
+              });
             }
           );
         } else if (frequency === "monthly") {
@@ -165,7 +177,13 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-              res.json({ week: [], month: monthRows.map((r: any) => ({ date: r.date, completed: Boolean(r.completed) })) });
+              res.json({
+                week: [],
+                month: monthRows.map((r: any) => ({
+                  date: r.date,
+                  completed: Boolean(r.completed),
+                })),
+              });
             }
           );
         } else {

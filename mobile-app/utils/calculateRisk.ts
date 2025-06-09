@@ -6,7 +6,9 @@ import { HabitCompletion } from "@/types";
 
 export default function calculateHabitRisk(completions: HabitCompletion[]) {
   // Only use daily completions (YYYY-MM-DD)
-  const dailyCompletions = completions.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.date));
+  const dailyCompletions = completions.filter((c) =>
+    /^\d{4}-\d{2}-\d{2}$/.test(c.date)
+  );
   const completionsByDay: Record<string, { total: number; missed: number }> = {
     Sunday: { total: 0, missed: 0 },
     Monday: { total: 0, missed: 0 },

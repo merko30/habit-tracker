@@ -146,13 +146,12 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
     let date: string;
     if (habit.frequency === "weekly") {
       const now = new Date();
-      const weekNumber =
-        Math.ceil(
-          ((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
-            86400000 +
-            1) /
-            7
-        );
+      const weekNumber = Math.ceil(
+        ((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
+          86400000 +
+          1) /
+          7
+      );
       date = `${now.getFullYear()}-W${weekNumber.toString().padStart(2, "0")}`;
     } else if (habit.frequency === "monthly") {
       const now = new Date();
