@@ -45,12 +45,31 @@ function getCurrentMonthDates() {
   const year = now.getFullYear();
   const month = now.getMonth();
   const days = getDaysInMonth(year, month);
-  const dates: string[] = [];
+  const dates: { date: string; isCurrentMonth: boolean }[] = [];
+
+  // Find the weekday of the 1st of the month (0=Mon, 6=Sun)
+  const firstDay = new Date(year, month, 1);
+  let firstWeekday = (firstDay.getDay() + 6) % 7; // 0=Mon
+
+  // Add days from previous month if needed
+  if (firstWeekday > 0) {
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevMonthDays = getDaysInMonth(prevYear, prevMonth);
+    for (let i = prevMonthDays - firstWeekday + 1; i <= prevMonthDays; i++) {
+      const m = pad2(prevMonth + 1);
+      const d = pad2(i);
+      dates.push({ date: `${prevYear}-${m}-${d}`, isCurrentMonth: false });
+    }
+  }
+
+  // Add current month days
   for (let i = 1; i <= days; i++) {
     const m = pad2(month + 1);
     const d = pad2(i);
-    dates.push(`${year}-${m}-${d}`);
+    dates.push({ date: `${year}-${m}-${d}`, isCurrentMonth: true });
   }
+
   return dates;
 }
 
@@ -61,7 +80,7 @@ function PreviewRow({
   completions,
   style,
 }: {
-  dates: string[];
+  dates: (string | { date: string; isCurrentMonth?: boolean })[];
   completions: HabitCompletion[];
   style?: object;
 }) {
@@ -79,7 +98,15 @@ function PreviewRow({
     <View style={[styles.previewContainer, style]}>
       {rows.map((row, rowIdx) => (
         <View key={rowIdx} style={[styles.previewRow, { gap }]}>
-          {row.map((date, idx) => {
+          {row.map((dateObj, idx) => {
+            let date: string;
+            let isCurrentMonth = true;
+            if (typeof dateObj === "string") {
+              date = dateObj;
+            } else {
+              date = dateObj.date;
+              isCurrentMonth = dateObj.isCurrentMonth !== false;
+            }
             const checked = completions.some(
               (c) => c.date === date && c.completed
             );
@@ -92,22 +119,22 @@ function PreviewRow({
                     width: itemSize,
                     height: itemSize,
                     borderRadius: itemSize / 2,
-                    backgroundColor: Colors.light.tint,
+                    backgroundColor: isCurrentMonth
+                      ? Colors.light.tint
+                      : "#ccc",
                   },
                 ]}
               >
                 <ThemedText
                   style={{
-                    color: "#fff",
+                    color: isCurrentMonth ? "#fff" : "#888",
                     fontSize: 12,
                     fontWeight: "bold",
                   }}
                 >
-                  {
-                    date.split("-")[2] // Extract day from date
-                  }
+                  {date.split("-")[2]}
                 </ThemedText>
-                {checked && (
+                {checked && isCurrentMonth && (
                   <View
                     style={{
                       width: 20,
