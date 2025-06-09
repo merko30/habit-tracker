@@ -25,8 +25,9 @@ export interface User {
 export interface HabitCompletion {
   id: number;
   habit_id: number;
-  date: string; // yyyy-mm-dd
+  date: string; // yyyy-mm-dd or YYYY-Www or YYYY-MM
   completed: boolean;
+  frequency?: string;
 }
 
 export interface CreateHabit {
@@ -46,6 +47,7 @@ export interface CreateCompletion {
   habit_id: number;
   date: string;
   completed: boolean;
+  frequency: string;
 }
 
 export interface UpdateCompletion {

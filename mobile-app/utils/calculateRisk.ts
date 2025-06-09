@@ -5,6 +5,8 @@ import { getCompletions } from "@/api/completions";
 import { HabitCompletion } from "@/types";
 
 export default function calculateHabitRisk(completions: HabitCompletion[]) {
+  // Only use daily completions (YYYY-MM-DD)
+  const dailyCompletions = completions.filter((c) => /^\d{4}-\d{2}-\d{2}$/.test(c.date));
   const completionsByDay: Record<string, { total: number; missed: number }> = {
     Sunday: { total: 0, missed: 0 },
     Monday: { total: 0, missed: 0 },
@@ -15,7 +17,7 @@ export default function calculateHabitRisk(completions: HabitCompletion[]) {
     Saturday: { total: 0, missed: 0 },
   };
 
-  for (const entry of completions) {
+  for (const entry of dailyCompletions) {
     const day = new Date(entry.date).toLocaleDateString("en-US", {
       weekday: "long",
     });

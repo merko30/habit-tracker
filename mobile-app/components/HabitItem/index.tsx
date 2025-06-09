@@ -142,10 +142,32 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
 
   const onComplete = async () => {
     const netState = await NetInfo.fetch();
+    // Determine date format based on frequency
+    let date: string;
+    if (habit.frequency === "weekly") {
+      const now = new Date();
+      const weekNumber =
+        Math.ceil(
+          ((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
+            86400000 +
+            1) /
+            7
+        );
+      date = `${now.getFullYear()}-W${weekNumber.toString().padStart(2, "0")}`;
+    } else if (habit.frequency === "monthly") {
+      const now = new Date();
+      date = `${now.getFullYear()}-${(now.getMonth() + 1)
+        .toString()
+        .padStart(2, "0")}`;
+    } else {
+      // daily
+      date = new Date().toISOString().split("T")[0];
+    }
     const completion: PendingCompletion = {
       habit_id: habit.id,
-      date: new Date().toISOString().split("T")[0],
+      date,
       completed: !habit.completed_today,
+      frequency: habit.frequency,
     };
     if (!netState.isConnected) {
       await updateStorage(habit);
@@ -164,7 +186,6 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
       }));
       return;
     }
-
     try {
       setHabit((old) => ({
         ...old,
@@ -187,8 +208,8 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
         completed_today: !old.completed_today, // Revert the completion state
         streak_count: old.completed_today
           ? old.streak_count + 1
-          : old.streak_count - 1, // Adjust streak count accordingly
-      })); // Revert state on error
+          : old.streak_count - 1,
+      }));
     }
   };
 

@@ -53,11 +53,12 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
 
   // POST /completions
   router.post("/", authMiddleware, (req, res) => {
-    const { habit_id, date, completed } = req.body;
-    if (!habit_id || !date || typeof completed !== "boolean") {
+    const { habit_id, date, completed, frequency } = req.body;
+    if (!habit_id || !date || typeof completed !== "boolean" || !frequency) {
       res.status(400).json({ error: "Missing fields" });
       return;
     }
+    // For weekly/monthly, date should be in YYYY-Www or YYYY-MM, for daily: YYYY-MM-DD
     db.serialize(() => {
       db.get(
         `SELECT completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
@@ -85,9 +86,7 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
                     res.status(500).json({ error: err.message });
                     return;
                   }
-                  res
-                    .status(200)
-                    .json({ ...row, completed: Boolean(row.completed) });
+                  res.status(200).json({ ...row, completed: Boolean(row.completed), frequency });
                 }
               );
             }
@@ -126,53 +125,113 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
       return;
     }
     const userId = (req as any).userId;
-    // Get current date
-    const now = new Date();
-    // Get Monday of current week
-    const dayOfWeek = (now.getDay() + 6) % 7; // 0 (Mon) - 6 (Sun)
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - dayOfWeek);
-    const mondayStr = monday.toISOString().slice(0, 10);
-    // Get first day of current month
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10);
-    db.serialize(() => {
-      // Get weekly completions (from Monday)
-      db.all(
-        `SELECT date, completed FROM habit_completions 
-         WHERE habit_id = ? AND date >= ? 
-         ORDER BY date`,
-        [habitId, mondayStr],
-        (err, weekRows) => {
-          if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-          }
-          // Get monthly completions (from 1st of month)
+    // Get habit frequency
+    db.get(
+      `SELECT frequency FROM habits WHERE id = ? AND user_id = ?`,
+      [habitId, userId],
+      (err, habit: any) => {
+        if (err) {
+          res.status(500).json({ error: err.message });
+          return;
+        }
+        if (!habit) {
+          res.status(404).json({ error: "Habit not found" });
+          return;
+        }
+        const frequency = habit.frequency;
+        const now = new Date();
+        if (frequency === "weekly") {
+          // Get current year-week string
+          const weekNumber = getWeekNumber(now);
+          const weekStr = `${now.getFullYear()}-W${weekNumber}`;
           db.all(
-            `SELECT date, completed FROM habit_completions 
-             WHERE habit_id = ? AND date >= ? 
-             ORDER BY date`,
-            [habitId, firstOfMonthStr],
-            (err, monthRows) => {
+            `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
+            [habitId, weekStr],
+            (err, weekRows: any[]) => {
               if (err) {
                 res.status(500).json({ error: err.message });
                 return;
               }
-              const weekData = (weekRows as any[]).map((row) => ({
-                date: row.date,
-                completed: Boolean(row.completed),
-              }));
-              const monthData = (monthRows as any[]).map((row) => ({
-                date: row.date,
-                completed: Boolean(row.completed),
-              }));
-              res.json({ week: weekData, month: monthData });
+              res.json({ week: weekRows.map((r: any) => ({ date: r.date, completed: Boolean(r.completed) })), month: [] });
             }
           );
+        } else if (frequency === "monthly") {
+          const monthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
+          db.all(
+            `SELECT date, completed FROM habit_completions WHERE habit_id = ? AND date = ?`,
+            [habitId, monthStr],
+            (err, monthRows: any[]) => {
+              if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+              }
+              res.json({ week: [], month: monthRows.map((r: any) => ({ date: r.date, completed: Boolean(r.completed) })) });
+            }
+          );
+        } else {
+          // daily (default)
+          // Get current date
+          const now = new Date();
+          // Get Monday of current week
+          const dayOfWeek = (now.getDay() + 6) % 7; // 0 (Mon) - 6 (Sun)
+          const monday = new Date(now);
+          monday.setDate(now.getDate() - dayOfWeek);
+          const mondayStr = monday.toISOString().slice(0, 10);
+          // Get first day of current month
+          const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+          const firstOfMonthStr = firstOfMonth.toISOString().slice(0, 10);
+          db.serialize(() => {
+            // Get weekly completions (from Monday)
+            db.all(
+              `SELECT date, completed FROM habit_completions 
+               WHERE habit_id = ? AND date >= ? 
+               ORDER BY date`,
+              [habitId, mondayStr],
+              (err, weekRows: any[]) => {
+                if (err) {
+                  res.status(500).json({ error: err.message });
+                  return;
+                }
+                // Get monthly completions (from 1st of month)
+                db.all(
+                  `SELECT date, completed FROM habit_completions 
+                   WHERE habit_id = ? AND date >= ? 
+                   ORDER BY date`,
+                  [habitId, firstOfMonthStr],
+                  (err, monthRows: any[]) => {
+                    if (err) {
+                      res.status(500).json({ error: err.message });
+                      return;
+                    }
+                    const weekData = (weekRows as any[]).map((row) => ({
+                      date: row.date,
+                      completed: Boolean(row.completed),
+                    }));
+                    const monthData = (monthRows as any[]).map((row) => ({
+                      date: row.date,
+                      completed: Boolean(row.completed),
+                    }));
+                    res.json({ week: weekData, month: monthData });
+                  }
+                );
+              }
+            );
+          });
         }
-      );
-    });
+      }
+    );
   });
   return router;
+}
+
+function pad2(n: number) {
+  return (n < 10 ? "0" : "") + n;
+}
+
+// Get ISO week number
+function getWeekNumber(date: Date) {
+  const start = new Date(date.getFullYear(), 0, 1);
+  const diff = date.getTime() - start.getTime();
+  const oneWeek = 1000 * 60 * 60 * 24 * 7;
+  return Math.ceil(diff / oneWeek);
 }

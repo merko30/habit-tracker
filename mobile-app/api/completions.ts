@@ -18,6 +18,7 @@ export async function createCompletion(data: {
   habit_id: number;
   date: string;
   completed: boolean;
+  frequency: string;
 }) {
   return axios.post("/completions", data).then((res) => res.data);
 }

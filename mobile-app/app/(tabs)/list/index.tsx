@@ -29,6 +29,7 @@ type PendingCompletion = {
   habit_id: number;
   date: string;
   completed: boolean;
+  frequency: string;
 };
 
 const syncPendingCompletions = async () => {
@@ -36,10 +37,18 @@ const syncPendingCompletions = async () => {
   if (!existing) return;
   const pending: PendingCompletion[] = JSON.parse(existing);
   if (!Array.isArray(pending) || pending.length === 0) return;
+  // Load all habits from storage to look up frequency if missing
+  const habitsRaw = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
+  const habits: Habit[] = habitsRaw ? JSON.parse(habitsRaw) : [];
   const successful: PendingCompletion[] = [];
   for (const completion of pending) {
+    let freq = completion.frequency;
+    if (!freq) {
+      const habit = habits.find((h) => h.id === completion.habit_id);
+      freq = habit?.frequency || "daily";
+    }
     try {
-      await createCompletion(completion);
+      await createCompletion({ ...completion, frequency: freq });
       successful.push(completion);
     } catch {
       // If fails, keep in pending

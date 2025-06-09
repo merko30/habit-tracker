@@ -23,6 +23,7 @@ export type PendingCompletion = {
   habit_id: number;
   date: string;
   completed: boolean;
+  frequency: string;
 };
 
 export const savePendingCompletion = async (completion: PendingCompletion) => {
