@@ -1,0 +1,41 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  username     String   @unique
+  email        String   @unique
+  password     String
+  age          Int?
+  timezone     String?
+  display_name String?
+  created_at   DateTime @default(now())
+  habits       Habit[]
+}
+
+model Habit {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  title      String
+  frequency  String
+  tags       String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id])
+  completions HabitCompletion[]
+}
+
+model HabitCompletion {
+  id         Int    @id @default(autoincrement())
+  habit_id   Int
+  date       String
+  completed  Boolean
+  habit      Habit  @relation(fields: [habit_id], references: [id])
+
+  @@unique([habit_id, date])
+}

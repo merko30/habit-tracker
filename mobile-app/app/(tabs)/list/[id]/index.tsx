@@ -38,20 +38,39 @@ export default function HabitEditScreen() {
           setHabit({
             title: habit.title,
             frequency: habit.frequency,
-            tags: habit.tags || [],
+            tags: Array.isArray(habit.tags)
+              ? habit.tags
+              : typeof habit.tags === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(habit.tags);
+                  } catch {
+                    return [];
+                  }
+                })()
+              : [],
           });
         }
-      } catch (error) {
+      } catch {
         // locally find
         const existingRaw = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
         const localHabits: Habit[] = existingRaw ? JSON.parse(existingRaw) : [];
         const localHabit = localHabits.find((h) => String(h.id) === String(id));
 
-        console.log(localHabit);
-
         if (localHabit) {
           setHabit({
             ...localHabit,
+            tags: Array.isArray(localHabit.tags)
+              ? localHabit.tags
+              : typeof localHabit.tags === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(localHabit.tags);
+                  } catch {
+                    return [];
+                  }
+                })()
+              : [],
           });
         }
       }
@@ -134,6 +153,8 @@ export default function HabitEditScreen() {
       });
     }
   };
+
+  console.log("Editing habit:", habit);
 
   return (
     <SafeAreaView style={styles.container}>

@@ -16,6 +16,21 @@ export default function createHabitsRouter(db: sqlite3.Database) {
     return id;
   }
 
+  // Helper: Get ISO week number (ISO-8601, weeks start on Monday, week 1 is the week with the first Thursday)
+  function getISOWeekNumber(date: Date) {
+    const tmp = new Date(date.getTime());
+    tmp.setHours(0, 0, 0, 0);
+    tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
+    const week1 = new Date(tmp.getFullYear(), 0, 4);
+    return (
+      1 +
+      Math.round(
+        ((tmp.getTime() - week1.getTime()) / 86400000 - 3 + ((week1.getDay() + 6) % 7)) /
+          7
+      )
+    );
+  }
+
   // GET /habits
   router.get("/", authMiddleware, (req, res) => {
     const userId = (req as any).userId;
@@ -33,15 +48,8 @@ export default function createHabitsRouter(db: sqlite3.Database) {
           let periodDate: string;
           const now = new Date();
           if (habit.frequency === "weekly") {
-            const weekNumber = Math.ceil(
-              ((now.getTime() - new Date(now.getFullYear(), 0, 1).getTime()) /
-                86400000 +
-                1) /
-                7
-            );
-            periodDate = `${now.getFullYear()}-W${weekNumber
-              .toString()
-              .padStart(2, "0")}`;
+            const weekNumber = getISOWeekNumber(now);
+            periodDate = `${now.getFullYear()}-W${weekNumber.toString().padStart(2, "0")}`;
           } else if (habit.frequency === "monthly") {
             periodDate = `${now.getFullYear()}-${(now.getMonth() + 1)
               .toString()
@@ -63,6 +71,7 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                   if (habit.frequency === "daily") {
                     let current: Date | null = null;
                     for (const row of rows) {
+                      if (!row.date || isNaN(Date.parse(row.date))) continue;
                       const rowDate = new Date(row.date);
                       if (streak === 0) current = rowDate;
                       if (
@@ -80,32 +89,18 @@ export default function createHabitsRouter(db: sqlite3.Database) {
                     // Weekly streak: count consecutive completed weeks
                     const now = new Date();
                     let year = now.getFullYear();
-                    let week = Math.ceil(
-                      ((now.getTime() -
-                        new Date(now.getFullYear(), 0, 1).getTime()) /
-                        86400000 +
-                        1) /
-                        7
-                    );
+                    let week = getISOWeekNumber(now);
                     const completedWeeks = new Set(rows.map((r) => r.date));
                     while (true) {
-                      const weekStr = `${year}-W${week
-                        .toString()
-                        .padStart(2, "0")}`;
+                      const weekStr = `${year}-W${week.toString().padStart(2, "0")}`;
                       if (completedWeeks.has(weekStr)) {
                         streak++;
                         week--;
                         if (week === 0) {
                           year--;
-                          // Get last week number of previous year
+                          // Get last ISO week number of previous year
                           const lastDay = new Date(year, 11, 31);
-                          week = Math.ceil(
-                            ((lastDay.getTime() -
-                              new Date(year, 0, 1).getTime()) /
-                              86400000 +
-                              1) /
-                              7
-                          );
+                          week = getISOWeekNumber(lastDay);
                         }
                       } else {
                         break;
@@ -258,6 +253,8 @@ export default function createHabitsRouter(db: sqlite3.Database) {
           res.status(404).json({ error: "Habit not found or unauthorized" });
           return;
         }
+        // Defensive: ensure habit is an object
+        const oldFrequency = (habit as any).frequency;
         db.run(
           "UPDATE habits SET title = ?, frequency = ?, tags = ? WHERE id = ?",
           [title, frequency, JSON.stringify(tags), id],
@@ -266,65 +263,83 @@ export default function createHabitsRouter(db: sqlite3.Database) {
               res.status(500).json({ error: err.message });
               return;
             }
-            // Fetch the updated habit and return with computed fields
-            db.get(
-              `SELECT h.*, 
-                (
-                  SELECT COUNT(*) FROM habit_completions hc WHERE hc.habit_id = h.id AND hc.completed = 1
-                ) AS total_completions,
-                EXISTS (
-                  SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
-                ) AS completed_today
-              FROM habits h WHERE h.id = ?`,
-              [id],
-              (err, row) => {
-                if (err) {
-                  res.status(500).json({ error: err.message });
-                  return;
-                }
-                if (!row || typeof row !== "object") {
-                  res
-                    .status(500)
-                    .json({ error: "Failed to fetch updated habit" });
-                  return;
-                }
-                const habit = row as any;
-                // Calculate streak_count
-                db.all<{ date: string }>(
-                  `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
-                  [id],
-                  (err, rows) => {
-                    let streak = 0;
-                    let current: Date | null = null;
-                    for (const row of rows || []) {
-                      const rowDate = new Date(row.date);
-                      if (streak === 0) current = rowDate;
-                      if (
-                        current &&
-                        rowDate.toISOString().slice(0, 10) ===
-                          current.toISOString().slice(0, 10)
-                      ) {
-                        streak++;
-                        current.setDate(current.getDate() - 1);
-                      } else {
-                        break;
-                      }
-                    }
-                    res.json({
-                      id: habit.id,
-                      user_id: habit.user_id,
-                      title: habit.title,
-                      frequency: habit.frequency,
-                      tags: JSON.parse(habit.tags || "[]"),
-                      created_at: habit.created_at,
-                      streak_count: streak,
-                      completed_today: Boolean(habit.completed_today),
-                      total_completions: habit.total_completions,
-                    });
+            // If frequency changed, delete all completions for this habit
+            if (oldFrequency !== frequency) {
+              db.run(
+                "DELETE FROM habit_completions WHERE habit_id = ?",
+                [id],
+                (err) => {
+                  if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
                   }
-                );
-              }
-            );
+                  fetchAndRespond();
+                }
+              );
+            } else {
+              fetchAndRespond();
+            }
+
+            function fetchAndRespond() {
+              db.get(
+                `SELECT h.*, 
+                  (
+                    SELECT COUNT(*) FROM habit_completions hc WHERE hc.habit_id = h.id AND hc.completed = 1
+                  ) AS total_completions,
+                  EXISTS (
+                    SELECT 1 FROM habit_completions hc2 WHERE hc2.habit_id = h.id AND hc2.completed = 1 AND hc2.date = DATE('now')
+                  ) AS completed_today
+                FROM habits h WHERE h.id = ?`,
+                [id],
+                (err, row) => {
+                  if (err) {
+                    res.status(500).json({ error: err.message });
+                    return;
+                  }
+                  if (!row || typeof row !== "object") {
+                    res
+                      .status(500)
+                      .json({ error: "Failed to fetch updated habit" });
+                    return;
+                  }
+                  const habit = row as any;
+                  // Calculate streak_count
+                  db.all<{ date: string }>(
+                    `SELECT date FROM habit_completions WHERE habit_id = ? AND completed = 1 ORDER BY date DESC`,
+                    [id],
+                    (err, rows) => {
+                      let streak = 0;
+                      let current: Date | null = null;
+                      for (const row of rows || []) {
+                        const rowDate = new Date(row.date);
+                        if (streak === 0) current = rowDate;
+                        if (
+                          current &&
+                          rowDate.toISOString().slice(0, 10) ===
+                            current.toISOString().slice(0, 10)
+                        ) {
+                          streak++;
+                          current.setDate(current.getDate() - 1);
+                        } else {
+                          break;
+                        }
+                      }
+                      res.json({
+                        id: habit.id,
+                        user_id: habit.user_id,
+                        title: habit.title,
+                        frequency: habit.frequency,
+                        tags: JSON.parse(habit.tags || "[]"),
+                        created_at: habit.created_at,
+                        streak_count: streak,
+                        completed_today: Boolean(habit.completed_today),
+                        total_completions: habit.total_completions,
+                      });
+                    }
+                  );
+                }
+              );
+            }
           }
         );
       }
@@ -343,29 +358,4 @@ export default function createHabitsRouter(db: sqlite3.Database) {
     db.get(
       "SELECT * FROM habits WHERE id = ? AND user_id = ?",
       [id, userId],
-      (err, habit) => {
-        if (err) {
-          res.status(500).json({ error: err.message });
-          return;
-        }
-        if (!habit) {
-          res.status(404).json({ error: "Habit not found or unauthorized" });
-          return;
-        }
-        db.run(
-          "DELETE FROM habits WHERE id = ?",
-          [id],
-          function (this: sqlite3.RunResult, err) {
-            if (err) {
-              res.status(500).json({ error: err.message });
-              return;
-            }
-            res.json({ deleted: this.changes });
-          }
-        );
-      }
-    );
-  });
-
-  return router;
-}
+     
