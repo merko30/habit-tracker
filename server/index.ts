@@ -67,59 +67,50 @@ db.serialize(() => {
     INSERT OR IGNORE INTO habits (id, user_id, title, frequency, tags)
     VALUES 
       (1, 1, 'Morning Workout', 'daily', '["health", "fitness"]'),
-      (2, 1, 'Read Book', 'daily', '["learning", "personal"]')
+      (2, 1, 'Read Book', 'daily', '["learning", "personal"]'),
+      (3, 1, 'Weekly Planning', 'weekly', '["organization", "focus"]'),
+      (4, 1, 'Monthly Reflection', 'monthly', '["mindfulness", "growth"]')
   `);
 
-  // Completions over 3 weeks
-  const completions = [
-    // Week 1
-    [1, "2025-05-19", false],
-    [2, "2025-05-19", true], // Monday
-    [1, "2025-05-20", true],
-    [2, "2025-05-20", false], // Tuesday
-    [1, "2025-05-21", true],
-    [2, "2025-05-21", false], // Wednesday
-    [1, "2025-05-22", true],
-    [2, "2025-05-22", false], // Thursday ❌
-    [1, "2025-05-23", false],
-    [2, "2025-05-23", true], // Friday
-    [1, "2025-05-24", true],
-    [2, "2025-05-24", true], // Saturday
-    [1, "2025-05-25", true],
-    [2, "2025-05-25", true], // Sunday
+  // Completions for daily habits (up to today)
+  const today = new Date();
+  const startDate = new Date("2025-05-19");
+  const completions = [];
+  let d = new Date(startDate);
+  let toggle = false;
+  while (d <= today) {
+    const dateStr = d.toISOString().slice(0, 10);
+    completions.push([1, dateStr, toggle]);
+    completions.push([2, dateStr, !toggle]);
+    d.setDate(d.getDate() + 1);
+    toggle = !toggle;
+  }
 
-    // Week 2
-    [1, "2025-05-26", false],
-    [2, "2025-05-26", true], // Monday
-    [1, "2025-05-27", true],
-    [2, "2025-05-27", false], // Tuesday
-    [1, "2025-05-28", false],
-    [2, "2025-05-28", false], // Wednesday
-    [1, "2025-05-29", true],
-    [2, "2025-05-29", false], // Thursday ❌
-    [1, "2025-05-30", false],
-    [2, "2025-05-30", true], // Friday
-    [1, "2025-05-31", true],
-    [2, "2025-05-31", true], // Saturday
-    [1, "2025-06-01", true],
-    [2, "2025-06-01", true], // Sunday
+  // Weekly completions (simulate 4 weeks)
+  function getWeekStr(date: Date) {
+    const year = date.getFullYear();
+    const jan1 = new Date(year, 0, 1);
+    const weekNumber = Math.ceil(
+      ((date.getTime() - jan1.getTime()) / 86400000 + 1) / 7
+    );
+    return `${year}-W${weekNumber.toString().padStart(2, "0")}`;
+  }
+  let weekStart = new Date("2025-05-19");
+  for (let i = 0; i < 4; i++) {
+    const weekStr = getWeekStr(weekStart);
+    completions.push([3, weekStr, i % 2 === 0]); // alternate completed
+    weekStart.setDate(weekStart.getDate() + 7);
+  }
 
-    // Week 3
-    [1, "2025-06-02", false],
-    [2, "2025-06-02", false], // Monday
-    [1, "2025-06-03", true],
-    [2, "2025-06-03", true], // Tuesday
-    [1, "2025-06-04", true],
-    [2, "2025-06-04", false], // Wednesday
-    [1, "2025-06-05", true],
-    [2, "2025-06-05", false], // Thursday ❌
-    [1, "2025-06-06", false],
-    [2, "2025-06-06", true], // Friday
-    [1, "2025-06-07", true],
-    [2, "2025-06-07", true], // Saturday
-    [1, "2025-06-08", true],
-    [2, "2025-06-08", true], // Sunday
-  ];
+  // Monthly completions (simulate 3 months)
+  let monthStart = new Date("2025-04-01");
+  for (let i = 0; i < 3; i++) {
+    const monthStr = `${monthStart.getFullYear()}-${(monthStart.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}`;
+    completions.push([4, monthStr, i % 2 === 1]); // alternate completed
+    monthStart.setMonth(monthStart.getMonth() + 1);
+  }
 
   const insertStmt = db.prepare(`
     INSERT OR IGNORE INTO habit_completions (habit_id, date, completed)

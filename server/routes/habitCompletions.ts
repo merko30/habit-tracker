@@ -145,9 +145,11 @@ export default function createHabitCompletionsRouter(db: sqlite3.Database) {
         const frequency = habit.frequency;
         const now = new Date();
         if (frequency === "weekly") {
-          // Get current year-week string
-          const weekNumber = getWeekNumber(now);
-          const weekStr = `${now.getFullYear()}-W${weekNumber}`;
+          // Get current ISO year-week string
+          const weekNumber = getISOWeekNumber(now);
+          const weekStr = `${now.getFullYear()}-W${weekNumber
+            .toString()
+            .padStart(2, "0")}`;
           // Get current month string
           const monthStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}`;
           db.all(
@@ -302,10 +304,21 @@ function pad2(n: number) {
   return (n < 10 ? "0" : "") + n;
 }
 
-// Get ISO week number
-function getWeekNumber(date: Date) {
-  const start = new Date(date.getFullYear(), 0, 1);
-  const diff = date.getTime() - start.getTime();
-  const oneWeek = 1000 * 60 * 60 * 24 * 7;
-  return Math.ceil(diff / oneWeek);
+// Get ISO week number (ISO-8601, weeks start on Monday, week 1 is the week with the first Thursday)
+function getISOWeekNumber(date: Date) {
+  const tmp = new Date(date.getTime());
+  tmp.setHours(0, 0, 0, 0);
+  // Thursday in current week decides the year
+  tmp.setDate(tmp.getDate() + 3 - ((tmp.getDay() + 6) % 7));
+  const week1 = new Date(tmp.getFullYear(), 0, 4);
+  // Adjust to Thursday in week 1 and count number of weeks from week 1 to current date
+  return (
+    1 +
+    Math.round(
+      ((tmp.getTime() - week1.getTime()) / 86400000 -
+        3 +
+        ((week1.getDay() + 6) % 7)) /
+        7
+    )
+  );
 }

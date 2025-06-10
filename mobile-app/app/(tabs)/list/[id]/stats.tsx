@@ -98,16 +98,23 @@ function PreviewRow({
     rows.push(dates.slice(i, i + 7));
   }
 
-  // Helper: get week string for a row (assume all dates in row are in the same week)
-  function getWeekStr(row: (string | { date: string })[]) {
+  // Helper: get ISO week string for a row (assume all dates in row are in the same week)
+  function getISOWeekStr(row: (string | { date: string })[]) {
     const firstDate = typeof row[0] === "string" ? row[0] : row[0].date;
     const d = new Date(firstDate);
-    const year = d.getFullYear();
-    const jan1 = new Date(year, 0, 1);
-    const weekNumber = Math.ceil(
-      ((d.getTime() - jan1.getTime()) / 86400000 + 1) / 7
-    );
-    return `${year}-W${weekNumber.toString().padStart(2, "0")}`;
+    d.setHours(0, 0, 0, 0);
+    // Thursday in current week decides the year
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const week1 = new Date(d.getFullYear(), 0, 4);
+    const weekNumber =
+      1 +
+      Math.round(
+        ((d.getTime() - week1.getTime()) / 86400000 -
+          3 +
+          ((week1.getDay() + 6) % 7)) /
+          7
+      );
+    return `${d.getFullYear()}-W${weekNumber.toString().padStart(2, "0")}`;
   }
 
   // Helper: check if the month is completed for monthly habits
@@ -123,7 +130,7 @@ function PreviewRow({
         let highlightRow = false;
 
         if (frequency === "weekly") {
-          const weekStr = getWeekStr(row);
+          const weekStr = getISOWeekStr(row);
           highlightRow = completions.some(
             (c) => c.date === weekStr && c.completed
           );
@@ -273,6 +280,7 @@ export default function HabitStatsScreen() {
     const fetchData = async () => {
       try {
         const data = await getWeeklyAndMonthlyStats(id as string);
+        console.log(data);
         setData(data);
       } catch {
         // Optionally handle error

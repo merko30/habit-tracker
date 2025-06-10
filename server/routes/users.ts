@@ -60,16 +60,21 @@ export default function createUsersRouter(db: sqlite3.Database) {
 
   // Login
   router.post("/login", (req, res) => {
+    console.log("Login request body:", req.body);
     const { email, username, password } = req.body;
     if ((!email && !username) || !password) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
+    console.log("pass", email, password);
+
     const query = email
       ? `SELECT * FROM users WHERE email = ?`
       : `SELECT * FROM users WHERE username = ?`;
     const value = email ? email : username;
     db.get(query, [value], async (err, user) => {
+      console.log("Login attempt:", { user });
+
       if (err) {
         res.status(500).json({ error: err.message });
         return;

@@ -17,7 +17,15 @@ export async function loginUser(data: {
   username?: string;
   password: string;
 }) {
-  return axios.post("/login", data).then((response) => response.data);
+  return axios
+    .post("/login", data)
+    .then((response) => response.data)
+    .catch((error) => {
+      console.error("Login failed:", error);
+      throw new Error(
+        error.response?.data?.error || "An error occurred during login."
+      );
+    });
 }
 
 export async function getUserProfile() {

@@ -34,7 +34,7 @@ const LoginScreen = () => {
       router.push("/list");
     } catch (error: any) {
       // axios error
-      console.log("Login failed:", error.response.data.error);
+      console.log("Login failed:", JSON.stringify(error, null, 2));
       Toast.show({
         type: "error",
         text1: error.response?.data?.error || "An error occurred during login.",
