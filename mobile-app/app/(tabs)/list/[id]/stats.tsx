@@ -135,7 +135,7 @@ function PreviewRow({
             (c) => c.date === weekStr && c.completed
           );
         } else if (frequency === "monthly") {
-          highlightRow = isMonthCompleted();
+          highlightRow = false;
         }
 
         return (
@@ -306,6 +306,8 @@ export default function HabitStatsScreen() {
     monthRows.push({ row, isCurrentWeekRow });
   }
 
+  const highlightMonth = frequency === "monthly" && data.month.length > 0;
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView
@@ -326,7 +328,46 @@ export default function HabitStatsScreen() {
           />
           <Text style={styles.title}>Monthly Preview</Text>
           <PeriodInfo isMonth />
-          <View style={styles.previewContainer}>
+          <View
+            style={[
+              styles.previewContainer,
+              {
+                position: "relative",
+              },
+            ]}
+          >
+            <View
+              style={{
+                position: "absolute",
+                top: 0,
+                left: -6,
+                height: "100%",
+                width: screenWidth - 20,
+                borderWidth: 1,
+                borderRadius: 16,
+                borderColor: highlightMonth ? Colors.light.tint : "transparent",
+              }}
+            />
+            {highlightMonth && (
+              <View
+                style={{
+                  position: "absolute",
+                  top: -10,
+                  right: -12,
+                  zIndex: 2,
+                  backgroundColor: "#fff",
+                  borderRadius: 12,
+                  padding: 2,
+                }}
+              >
+                <MaterialIcons
+                  name="check"
+                  size={20}
+                  color={Colors.light.tint}
+                />
+              </View>
+            )}
+
             {monthRows.map(({ row, isCurrentWeekRow }, idx) => (
               <PreviewRow
                 key={idx}
