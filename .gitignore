@@ -38,5 +38,5 @@ yarn-error.*
 
 app-example
 
-server/habits.db
+server/prisma/habits.db
 /generated/prisma
