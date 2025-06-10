@@ -40,6 +40,7 @@ import {
   ICONS_WIDTH,
   HEIGHT,
   PendingCompletion,
+  frequencyColors,
 } from "./utils";
 
 const { width: wWidth } = Dimensions.get("window");
@@ -213,70 +214,77 @@ const HabitItem = ({ habit: _habit }: { habit: HabitWithCompletionId }) => {
   };
 
   return (
-    <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.wrapper, animatedStyle]}>
-        <ThemedView
-          style={[
-            styles.item,
-            {
-              width: wWidth,
-            },
-          ]}
-        >
-          <ThemedView style={styles.titleContainer}>
-            <MaterialIcons
-              size={32}
-              name={
-                habit.completed_today
-                  ? "check-circle"
-                  : "radio-button-unchecked"
-              }
-              onPress={onComplete}
-              color={
-                Colors[colorScheme ?? "light"][
-                  habit.completed_today ? "tint" : "text"
-                ]
-              }
-            />
-            <Link href={{ pathname: "/list/[id]", params: { id: habit.id } }}>
-              <View
-                style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-              >
-                <ThemedText style={styles.itemTitle}>{habit.title}</ThemedText>
-                {(habit.updated || habit.id.toString().includes("offline")) && (
-                  <MaterialIcons
-                    name="sync"
-                    size={16}
-                    color={Colors[colorScheme ?? "light"].text}
-                  />
-                )}
-              </View>
-            </Link>
-          </ThemedView>
+    <>
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={[styles.wrapper, animatedStyle]}>
           <ThemedView
             style={[
-              styles.count,
-              { backgroundColor: Colors[colorScheme ?? "light"].tint },
+              styles.item,
+              {
+                width: wWidth,
+                borderLeftWidth: 6,
+                borderLeftColor: frequencyColors[habit.frequency] || "#bbb",
+              },
             ]}
           >
-            <ThemedText style={styles.streakCount}>
-              {habit.streak_count}
-            </ThemedText>
+            <ThemedView style={styles.titleContainer}>
+              <MaterialIcons
+                size={32}
+                name={
+                  habit.completed_today
+                    ? "check-circle"
+                    : "radio-button-unchecked"
+                }
+                onPress={onComplete}
+                color={
+                  Colors[colorScheme ?? "light"][
+                    habit.completed_today ? "tint" : "text"
+                  ]
+                }
+              />
+              <Link href={{ pathname: "/list/[id]", params: { id: habit.id } }}>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <ThemedText style={styles.itemTitle}>
+                    {habit.title}
+                  </ThemedText>
+                  {(habit.updated ||
+                    habit.id.toString().includes("offline")) && (
+                    <MaterialIcons
+                      name="sync"
+                      size={16}
+                      color={Colors[colorScheme ?? "light"].text}
+                    />
+                  )}
+                </View>
+              </Link>
+            </ThemedView>
+            <ThemedView
+              style={[
+                styles.count,
+                { backgroundColor: Colors[colorScheme ?? "light"].tint },
+              ]}
+            >
+              <ThemedText style={styles.streakCount}>
+                {habit.streak_count}
+              </ThemedText>
+            </ThemedView>
           </ThemedView>
-        </ThemedView>
-        <Pressable
-          style={{
-            backgroundColor: "#f44336",
-            width: ICONS_WIDTH,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-          onPress={onDeleteHabit}
-        >
-          <MaterialIcons size={32} name="delete" color="white" />
-        </Pressable>
-      </Animated.View>
-    </GestureDetector>
+          <Pressable
+            style={{
+              backgroundColor: "#f44336",
+              width: ICONS_WIDTH,
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={onDeleteHabit}
+          >
+            <MaterialIcons size={32} name="delete" color="white" />
+          </Pressable>
+        </Animated.View>
+      </GestureDetector>
+    </>
   );
 };
 

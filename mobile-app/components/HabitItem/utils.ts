@@ -61,3 +61,9 @@ export const syncPendingCompletions = async () => {
     );
   }
 };
+
+export const frequencyColors: Record<string, string> = {
+  daily: "#4CAF50", // Green
+  weekly: "#2196F3", // Blue
+  monthly: "#FF9800", // Orange
+};

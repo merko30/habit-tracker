@@ -19,6 +19,7 @@ import { Habit } from "@/types";
 import HabitItem from "@/components/HabitItem";
 import { ThemedView } from "@/components/ThemedView";
 import { createCompletion } from "@/api/completions";
+import FrequencyLegend from "@/components/FrequencyLegend";
 
 import { HABITS_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/Auth";
@@ -77,7 +78,6 @@ type DeletedHabit = Habit & {
 export default function HomeScreen() {
   const [habits, setHabits] = useState<DeletedHabit[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const syncingRef = useRef(false);
 
   const { user } = useAuth();
@@ -93,8 +93,9 @@ export default function HomeScreen() {
       if (stored) {
         setHabits(JSON.parse(stored));
       }
-    } catch (_e) {
-      setError("Failed to load habits from storage");
+    } catch {
+      // Remove unused error state
+      // setError("Failed to load habits from storage");
     } finally {
       setLoading(false);
     }
@@ -264,6 +265,7 @@ export default function HomeScreen() {
             <ThemedText>{note}</ThemedText>
           </View>
         )}
+        <FrequencyLegend />
         <FlatList
           style={{ flex: 1 }}
           data={sortedHabits}
