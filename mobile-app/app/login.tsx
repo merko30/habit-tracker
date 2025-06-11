@@ -10,6 +10,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/Auth";
 import Toast from "react-native-toast-message";
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const LoginScreen = () => {
   const [data, setData] = useState({
     email: "",
@@ -21,6 +23,22 @@ const LoginScreen = () => {
   const router = useRouter();
 
   const onLogin = async () => {
+    if (!data.email || !data.password) {
+      Toast.show({
+        type: "error",
+        text1: "Please fill in all fields.",
+      });
+      return;
+    }
+
+    if (!EMAIL_REGEX.test(data.email)) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter a valid email address.",
+      });
+      return;
+    }
+
     try {
       const res = await loginUser(data);
 
