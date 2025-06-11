@@ -13,7 +13,8 @@
   "name": "server",
   "scripts": {
     "dev": "nodemon --exec ts-node index.ts",
-    "seed": "ts-node ./seed/seed.ts"
+    "seed": "ts-node ./seed/seed.ts",
+    "migrate": "prisma migrate dev --name init"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
