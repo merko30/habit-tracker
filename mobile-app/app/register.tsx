@@ -7,6 +7,7 @@ import { ThemedText } from "@/components/ThemedText";
 import Button from "@/components/Button";
 import { registerUser } from "@/api/users";
 import Toast from "react-native-toast-message";
+import { isValidEmail } from "@/utils/validation";
 
 const RegisterScreen = () => {
   const [data, setData] = useState({
@@ -18,6 +19,21 @@ const RegisterScreen = () => {
   const router = useRouter();
 
   const onRegister = async () => {
+    if (!data.username || !data.email || !data.password) {
+      Toast.show({
+        type: "error",
+        text1: "Please fill in all fields.",
+      });
+      return;
+    }
+    if (!isValidEmail(data.email)) {
+      Toast.show({
+        type: "error",
+        text1: "Please enter a valid email address.",
+      });
+      return;
+    }
+
     try {
       await registerUser(data);
 

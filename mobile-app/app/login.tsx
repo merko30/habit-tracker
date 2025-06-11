@@ -9,8 +9,7 @@ import { loginUser } from "@/api/users";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useAuth } from "@/providers/Auth";
 import Toast from "react-native-toast-message";
-
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import { isValidEmail } from "@/utils/validation";
 
 const LoginScreen = () => {
   const [data, setData] = useState({
@@ -31,7 +30,7 @@ const LoginScreen = () => {
       return;
     }
 
-    if (!EMAIL_REGEX.test(data.email)) {
+    if (!isValidEmail(data.email)) {
       Toast.show({
         type: "error",
         text1: "Please enter a valid email address.",
