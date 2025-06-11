@@ -218,20 +218,19 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
+    // On mount, check connection and load habits ONCE
+    let didRun = false;
     const checkConnectionAndLoad = async () => {
+      if (didRun) return;
+      didRun = true;
       const netState = await NetInfo.fetch();
-
       if (netState.isConnected) {
-        syncHabits(); // sync habits if online
-        // loadHabitsFromApi(); // this will overwrite later with synced data
+        await syncHabits();
       } else {
-        loadHabitsFromStorage(); // load from local storage if offline
+        await loadHabitsFromStorage();
       }
     };
     checkConnectionAndLoad();
-  }, [refresh]);
-
-  useEffect(() => {
     // Set up listener for future changes
     const unsubscribe = NetInfo.addEventListener((state) => {
       if (state.isConnected) {
@@ -240,9 +239,8 @@ export default function HomeScreen() {
         loadHabitsFromStorage();
       }
     });
-
     return () => unsubscribe();
-  }, []);
+  }, [refresh, syncHabits]);
 
   const sortedHabits = useMemo(
     () => habits.slice().filter((habit) => !habit.deleted),
