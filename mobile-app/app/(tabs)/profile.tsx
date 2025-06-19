@@ -1,10 +1,4 @@
-import {
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-} from "react-native";
+import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
 import { useEffect, useState } from "react";
 
 import Field from "@/components/Field";
@@ -15,6 +9,7 @@ import Button from "@/components/Button";
 import { useAuth } from "@/providers/Auth";
 import { updateUserProfile } from "@/api/users";
 import Toast from "react-native-toast-message";
+import { PADDING_TOP } from "@/constants/styles";
 
 export default function Profile() {
   const [user, setUser] = useState({
@@ -113,7 +108,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 1,
     padding: 16,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    paddingTop: PADDING_TOP,
   },
   description: {
     marginBottom: 16,

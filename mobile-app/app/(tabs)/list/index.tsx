@@ -1,12 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
-import {
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
-} from "react-native";
+import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { useLocalSearchParams } from "expo-router";
@@ -25,6 +18,7 @@ import { useAuth } from "@/providers/Auth";
 import { useCalculateRisk } from "@/utils/calculateRisk";
 import { loadLocalHabits } from "@/utils/localHabits";
 import { syncPendingCompletions } from "@/utils/localCompletions";
+import { PADDING_TOP } from "@/constants/styles";
 
 type DeletedHabit = Habit & {
   deleted?: boolean;
@@ -231,7 +225,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    paddingTop: PADDING_TOP,
   },
   headerContent: {
     paddingTop: 16,

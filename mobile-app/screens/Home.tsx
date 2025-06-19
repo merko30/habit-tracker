@@ -1,12 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from "react";
-import {
-  FlatList,
-  Platform,
-  SafeAreaView,
-  StatusBar,
-  StyleSheet,
-  View,
-} from "react-native";
+import { FlatList, SafeAreaView, StyleSheet, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { useLocalSearchParams } from "expo-router";
@@ -19,6 +12,7 @@ import HabitItem from "@/components/HabitItem";
 import { ThemedView } from "@/components/ThemedView";
 
 import { HABITS_STORAGE_KEY } from "@/constants";
+import { PADDING_TOP } from "@/constants/styles";
 
 export default function HomeScreen() {
   const [habits, setHabits] = useState<Habit[]>([]);
@@ -186,7 +180,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    paddingTop: PADDING_TOP,
   },
   headerContent: {
     paddingTop: 16,

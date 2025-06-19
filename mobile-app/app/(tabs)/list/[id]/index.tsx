@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import {
-  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
-  StatusBar,
   StyleSheet,
   Text,
 } from "react-native";
@@ -19,6 +17,7 @@ import { initialValues } from "@/utils";
 import { Colors } from "@/constants/Colors";
 import { loadLocalHabits, saveLocalHabits } from "@/utils/localHabits";
 import { withParsedTags } from "@/utils/tags";
+import { PADDING_TOP } from "@/constants/styles";
 
 export default function HabitEditScreen() {
   const { id: idRaw } = useLocalSearchParams<{ id: string }>();
@@ -161,7 +160,7 @@ export default function HabitEditScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    paddingTop: PADDING_TOP,
   },
   scrollContainer: {
     padding: 16,

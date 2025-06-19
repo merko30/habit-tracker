@@ -1,11 +1,5 @@
 import { useState } from "react";
-import {
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-} from "react-native";
+import { SafeAreaView, ScrollView, StyleSheet } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Toast from "react-native-toast-message";
 import { useRouter } from "expo-router";
@@ -15,6 +9,7 @@ import SaveHeader from "@/components/SaveHeader";
 import { createHabit } from "@/api/habits";
 import { Habit } from "@/types";
 import { HabitFormValues, initialValues, normalize } from "@/utils";
+import { PADDING_TOP } from "@/constants/styles";
 
 export default function AddScreen() {
   const [habit, setHabit] = useState<HabitFormValues>(initialValues);
@@ -118,7 +113,7 @@ export default function AddScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: Platform.OS === "android" ? StatusBar.currentHeight : 0,
+    paddingTop: PADDING_TOP,
   },
   scrollContainer: {
     padding: 16,
