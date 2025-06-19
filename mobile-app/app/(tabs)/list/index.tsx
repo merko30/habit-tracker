@@ -17,8 +17,8 @@ import { getHabits } from "@/api/habits";
 import { Habit } from "@/types";
 import HabitItem from "@/components/HabitItem";
 import { ThemedView } from "@/components/ThemedView";
-import { createCompletion } from "@/api/completions";
 import FrequencyLegend from "@/components/FrequencyLegend";
+import { withParsedTags } from "@/utils/tags";
 
 import { HABITS_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/Auth";
@@ -78,9 +78,8 @@ export default function HomeScreen() {
           const updatedHabit = await updateHabit(habit.id, {
             title: habit.title,
             frequency: habit.frequency,
-            tags: habit.tags || [],
+            tags: withParsedTags(habit).tags,
           });
-
           // Update local habits array with the updated habit
           localHabits = localHabits.map((h) =>
             h.id === updatedHabit.id ? updatedHabit : h
@@ -100,15 +99,7 @@ export default function HomeScreen() {
             // Ensure tags is an array before sending to API
             const habitData = {
               ...data,
-              tags: Array.isArray(data.tags)
-                ? data.tags
-                : (() => {
-                    try {
-                      return JSON.parse(data.tags);
-                    } catch {
-                      return [];
-                    }
-                  })(),
+              tags: withParsedTags(data).tags,
             };
             const created = await createHabit(habitData);
             cleanedLocalHabits.push(created); // add newly created habit with real ID
@@ -119,15 +110,7 @@ export default function HomeScreen() {
           // Ensure tags is always an array (not stringified)
           cleanedLocalHabits.push({
             ...localHabit,
-            tags: Array.isArray(localHabit.tags)
-              ? localHabit.tags
-              : (() => {
-                  try {
-                    return JSON.parse(localHabit.tags);
-                  } catch {
-                    return [];
-                  }
-                })(),
+            tags: withParsedTags(localHabit).tags || [],
           });
         }
       }
