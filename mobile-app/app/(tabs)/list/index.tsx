@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
-  Alert,
   FlatList,
   Platform,
   SafeAreaView,
@@ -24,6 +23,7 @@ import FrequencyLegend from "@/components/FrequencyLegend";
 import { HABITS_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/Auth";
 import { useCalculateRisk } from "@/utils/calculateRisk";
+import { useHabits as useLocalHabits } from "@/providers/Habits";
 
 const PENDING_COMPLETIONS_KEY = "pendingCompletions";
 type PendingCompletion = {
@@ -80,26 +80,13 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const syncingRef = useRef(false);
 
+  const { loadHabits: loadLocalHabits, habits: localHabits } = useLocalHabits();
+
   const { user } = useAuth();
 
   const { refresh } = useLocalSearchParams();
 
   const note = useCalculateRisk();
-
-  // Add loadHabitsFromStorage if not present
-  const loadHabitsFromStorage = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
-      if (stored) {
-        setHabits(JSON.parse(stored));
-      }
-    } catch {
-      // Remove unused error state
-      // setError("Failed to load habits from storage");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const syncHabits = useCallback(async () => {
     if (syncingRef.current) return;
@@ -227,7 +214,7 @@ export default function HomeScreen() {
       if (netState.isConnected) {
         await syncHabits();
       } else {
-        await loadHabitsFromStorage();
+        await loadLocalHabits();
       }
     };
     checkConnectionAndLoad();
@@ -236,7 +223,7 @@ export default function HomeScreen() {
       if (state.isConnected) {
         syncHabits();
       } else {
-        loadHabitsFromStorage();
+        loadLocalHabits();
       }
     });
     return () => unsubscribe();

@@ -12,6 +12,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import Toast from "react-native-toast-message";
 import AuthProvider from "@/providers/Auth";
 import Navigation from "@/navigation";
+import { HabitsProvider } from "@/providers/Habits";
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -28,7 +29,9 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <AuthProvider>
-          <Navigation />
+          <HabitsProvider>
+            <Navigation />
+          </HabitsProvider>
         </AuthProvider>
         <StatusBar style="auto" />
         <Toast position="bottom" />
