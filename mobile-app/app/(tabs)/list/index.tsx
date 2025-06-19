@@ -23,52 +23,8 @@ import FrequencyLegend from "@/components/FrequencyLegend";
 import { HABITS_STORAGE_KEY } from "@/constants";
 import { useAuth } from "@/providers/Auth";
 import { useCalculateRisk } from "@/utils/calculateRisk";
-import { useHabits as useLocalHabits } from "@/providers/Habits";
-
-const PENDING_COMPLETIONS_KEY = "pendingCompletions";
-type PendingCompletion = {
-  habit_id: number;
-  date: string;
-  completed: boolean;
-  frequency: string;
-};
-
-const syncPendingCompletions = async () => {
-  const existing = await AsyncStorage.getItem(PENDING_COMPLETIONS_KEY);
-  if (!existing) return;
-  const pending: PendingCompletion[] = JSON.parse(existing);
-  if (!Array.isArray(pending) || pending.length === 0) return;
-  // Load all habits from storage to look up frequency if missing
-  const habitsRaw = await AsyncStorage.getItem(HABITS_STORAGE_KEY);
-  const habits: Habit[] = habitsRaw ? JSON.parse(habitsRaw) : [];
-  const successful: PendingCompletion[] = [];
-  for (const completion of pending) {
-    let freq = completion.frequency;
-    if (!freq) {
-      const habit = habits.find((h) => h.id === completion.habit_id);
-      freq = habit?.frequency || "daily";
-    }
-    try {
-      await createCompletion({ ...completion, frequency: freq });
-      successful.push(completion);
-    } catch {
-      // If fails, keep in pending
-    }
-  }
-  // Remove successful from pending
-  const remaining = pending.filter(
-    (c) =>
-      !successful.some((s) => s.habit_id === c.habit_id && s.date === c.date)
-  );
-  if (remaining.length === 0) {
-    await AsyncStorage.removeItem(PENDING_COMPLETIONS_KEY);
-  } else {
-    await AsyncStorage.setItem(
-      PENDING_COMPLETIONS_KEY,
-      JSON.stringify(remaining)
-    );
-  }
-};
+import { loadLocalHabits } from "@/utils/localHabits";
+import { syncPendingCompletions } from "@/utils/localCompletions";
 
 type DeletedHabit = Habit & {
   deleted?: boolean;
@@ -78,9 +34,8 @@ type DeletedHabit = Habit & {
 export default function HomeScreen() {
   const [habits, setHabits] = useState<DeletedHabit[]>([]);
   const [loading, setLoading] = useState(true);
+  const isOnlineRef = useRef(true);
   const syncingRef = useRef(false);
-
-  const { loadHabits: loadLocalHabits, habits: localHabits } = useLocalHabits();
 
   const { user } = useAuth();
 
@@ -94,16 +49,10 @@ export default function HomeScreen() {
 
     try {
       await syncPendingCompletions();
-      const habitsFromStorageRaw = await AsyncStorage.getItem(
-        HABITS_STORAGE_KEY
-      );
+      let localHabits = await loadLocalHabits();
       const { createHabit, updateHabit, deleteHabit } = await import(
         "@/api/habits"
       );
-
-      let localHabits: DeletedHabit[] = habitsFromStorageRaw
-        ? JSON.parse(habitsFromStorageRaw)
-        : [];
 
       // check "deleted" field in local habits
       const habitsToDelete = localHabits.filter((h) => h.deleted);
@@ -204,37 +153,48 @@ export default function HomeScreen() {
     }
   }, []);
 
+  // event that sets network state
   useEffect(() => {
-    // On mount, check connection and load habits ONCE
-    let didRun = false;
-    const checkConnectionAndLoad = async () => {
-      if (didRun) return;
-      didRun = true;
-      const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        await syncHabits();
-      } else {
-        await loadLocalHabits();
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      isOnlineRef.current = !!state.isConnected;
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // depending on the internet state and refresh param, load habits
+  useEffect(() => {
+    const loadHabits = async () => {
+      setLoading(true);
+      try {
+        if (!isOnlineRef.current) {
+          // If refresh is true or we're offline, load from local storage
+          const habits = await loadLocalHabits();
+          setHabits(habits);
+        } else {
+          // If online, fetch from server
+          await syncHabits();
+        }
+      } catch (error) {
+        console.error("Failed to load habits:", error);
+      } finally {
+        setLoading(false);
       }
     };
-    checkConnectionAndLoad();
-    // Set up listener for future changes
-    const unsubscribe = NetInfo.addEventListener((state) => {
-      if (state.isConnected) {
-        syncHabits();
-      } else {
-        loadLocalHabits();
-      }
-    });
-    return () => unsubscribe();
-  }, [refresh, syncHabits]);
+
+    loadHabits();
+  }, [refresh]);
 
   const sortedHabits = useMemo(
-    () => habits.slice().filter((habit) => !habit.deleted),
+    () =>
+      habits
+        .slice()
+        .filter((habit) => !habit.deleted)
+        .sort(),
     [habits]
   );
 
-  const name = useMemo(() => user?.display_name || user?.username, [user]);
+  const name = user?.display_name || user?.username;
 
   return (
     <SafeAreaView style={styles.container}>
